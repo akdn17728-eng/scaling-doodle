@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>USGS Magnitude 5.0+ Earthquakes</title>
+  <title>USGS Magnitude 2.5+ Earthquakes (Past 30 Days)</title>
   
   <!-- Leaflet 지도 라이브러리 CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -23,9 +23,9 @@
       overflow: hidden;
     }
 
-    /* 사이드바 스타일 (지진 목록) */
+    /* 사이드바 (지진 목록) */
     #sidebar {
-      width: 320px;
+      width: 340px;
       height: 100%;
       background: #ffffff;
       border-right: 1px solid #ccc;
@@ -41,12 +41,12 @@
       background: #fafafa;
     }
     .header h2 {
-      font-size: 16px;
+      font-size: 15px;
       color: #333;
       margin-bottom: 4px;
     }
     .header p {
-      font-size: 13px;
+      font-size: 12px;
       color: #666;
     }
 
@@ -69,19 +69,18 @@
     }
 
     .mag-badge {
-      width: 44px;
-      height: 44px;
+      width: 42px;
+      height: 42px;
       border-radius: 50%;
-      background: #e65100;
       color: white;
       font-weight: bold;
-      font-size: 15px;
+      font-size: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-right: 12px;
       flex-shrink: 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.12);
     }
 
     .eq-info {
@@ -113,7 +112,6 @@
       height: 100%;
     }
 
-    /* 로딩 표시 */
     .loading {
       padding: 20px;
       text-align: center;
@@ -127,11 +125,11 @@
   <!-- 왼쪽 사이드바 -->
   <div id="sidebar">
     <div class="header">
-      <h2>USGS Earthquakes (M 5.0+)</h2>
-      <p id="count-summary">데이터 불러오는 중...</p>
+      <h2>USGS Earthquakes (M 2.5+ / 30Days)</h2>
+      <p id="count-summary">최근 한 달 데이터 로딩 중...</p>
     </div>
     <ul id="earthquake-list">
-      <li class="loading">지진 데이터를 불러오고 있습니다...</li>
+      <li class="loading">지진 데이터를 불러오는 중입니다...</li>
     </ul>
   </div>
 
@@ -142,10 +140,9 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    // 1. 지도 초기화 (세계 지도 중심 설정, 판 선 없이 깔끔한 스타일 적용)
+    // 1. 지도 초기화 (판 경계선 없는 깔끔한 베이스맵 적용)
     const map = L.map('map').setView([20, 0], 2);
 
-    // 판 선이 없는 회색조/깔끔한 타일 레이어 (CartoDB Positron)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
@@ -153,23 +150,27 @@
 
     const listElement = document.getElementById('earthquake-list');
     const countSummary = document.getElementById('count-summary');
-    const markers = {};
 
-    // 2. USGS API (지난 7일간 4.5+ 지진 데이터 가져와서 5.0 이상만 직접 필터링)
-    const USGS_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson';
+    // 2. 지난 30일간 규모 2.5+ 지진 API
+    const USGS_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_month.geojson';
 
     async function fetchEarthquakes() {
       try {
         const response = await fetch(USGS_URL);
         const data = await response.json();
 
-        // 진도 5.0 이상만 필터링
-        const filteredFeatures = data.features.filter(eq => eq.properties.mag >= 5.0);
+        // 규모 2.5 이상만 필터링 (기본 데이터가 2.5 이상이지만 검증용)
+        let features = data.features.filter(eq => eq.properties.mag >= 2.5);
 
         // 최신순 정렬
-        filteredFeatures.sort((a, b) => b.properties.time - a.properties.time);
+        features.sort((a, b) => b.properties.time - a.properties.time);
 
-        renderEarthquakes(filteredFeatures);
+        const totalCount = features.length;
+        
+        // 목록/지도 가독성과 성능을 위해 목록 표시는 최신 300개로 제한
+        const displayFeatures = features.slice(0, 300);
+
+        renderEarthquakes(displayFeatures, totalCount);
       } catch (error) {
         console.error('지진 데이터 로드 실패:', error);
         listElement.innerHTML = '<li class="loading">데이터를 불러오는 중 오류가 발생했습니다.</li>';
@@ -177,52 +178,49 @@
       }
     }
 
-    function renderEarthquakes(features) {
+    function renderEarthquakes(features, totalCount) {
       listElement.innerHTML = '';
-      countSummary.textContent = `총 ${features.length}개의 지진 감지됨`;
+      countSummary.textContent = `지난 30일간 총 ${totalCount.toLocaleString()}건 (최신 300개 표시)`;
 
       if (features.length === 0) {
-        listElement.innerHTML = '<li class="loading">현재 규모 5.0 이상의 지진이 없습니다.</li>';
+        listElement.innerHTML = '<li class="loading">검색된 지진 데이터가 없습니다.</li>';
         return;
       }
 
       features.forEach((eq) => {
-        const id = eq.id;
-        const mag = eq.properties.mag.toFixed(1);
+        const mag = eq.properties.mag ? eq.properties.mag.toFixed(1) : '2.5';
         const place = eq.properties.place || '위치 정보 없음';
         const time = new Date(eq.properties.time).toLocaleString('ko-KR');
         const coords = eq.geometry.coordinates; // [lng, lat, depth]
         const lat = coords[1];
         const lng = coords[0];
         const depth = coords[2];
+        const color = getMagColor(mag);
 
-        // 3. 지도에 원형 마커 표시 (판 경계선 없음)
+        // 3. 지도 마커 추가
         const marker = L.circleMarker([lat, lng], {
-          radius: Math.max(mag * 2, 8), // 진도에 따라 원 크기 변경
-          fillColor: getMagColor(mag),
+          radius: Math.max(mag * 1.8, 4), // 규모에 따른 마커 크기
+          fillColor: color,
           color: '#ffffff',
-          weight: 1.5,
-          opacity: 0.9,
-          fillOpacity: 0.75
+          weight: 1,
+          opacity: 0.8,
+          fillOpacity: 0.7
         }).addTo(map);
 
-        // 마커 클릭 시 팝업
         marker.bindPopup(`
           <div style="font-size:13px;">
-            <strong style="color:${getMagColor(mag)}; font-size:15px;">규모 ${mag}</strong><br>
+            <strong style="color:${color}; font-size:15px;">규모 ${mag}</strong><br>
             <b>위치:</b> ${place}<br>
             <b>시간:</b> ${time}<br>
             <b>깊이:</b> ${depth} km
           </div>
         `);
 
-        markers[id] = { marker, lat, lng };
-
-        // 4. 왼쪽 사이드바 목록 아이템 생성
+        // 4. 왼쪽 목록 생성
         const li = document.createElement('li');
         li.className = 'eq-item';
         li.innerHTML = `
-          <div class="mag-badge" style="background:${getMagColor(mag)}">${mag}</div>
+          <div class="mag-badge" style="background:${color}">${mag}</div>
           <div class="eq-info">
             <div class="eq-title">${place}</div>
             <div class="eq-time">${time}</div>
@@ -230,7 +228,6 @@
           </div>
         `;
 
-        // 목록 클릭 시 해당 위치로 지도 이동 및 팝업 열기
         li.addEventListener('click', () => {
           map.flyTo([lat, lng], 6, { duration: 1.2 });
           marker.openPopup();
@@ -240,15 +237,15 @@
       });
     }
 
-    // 진도(규모)에 따른 색상 구분 함수
+    // 규모(Magnitude)별 색상 세분화
     function getMagColor(mag) {
-      if (mag >= 7.0) return '#b71c1c'; // 다크 레드
-      if (mag >= 6.0) return '#d32f2f'; // 레드
-      if (mag >= 5.5) return '#f57c00'; // 주황
-      return '#ff9800';                // 연한 주황 (5.0~5.4)
+      if (mag >= 6.0) return '#d32f2f'; // 빨강 (강진)
+      if (mag >= 5.0) return '#f57c00'; // 주황 (중진)
+      if (mag >= 4.0) return '#fbc02d'; // 노랑 (약진)
+      if (mag >= 3.0) return '#388e3c'; // 초록 (소진)
+      return '#0288d1';                // 파랑 (2.5~2.9 미소지진)
     }
 
-    // 실행
     fetchEarthquakes();
   </script>
 </body>
