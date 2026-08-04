@@ -1,32 +1,93 @@
-<!DOCTYPE html>
+import cv2
+import numpy as np
+import base64
+
+# Load the image
+img_path = 'Screenshot 2026-08-04 1.26.45 PM.jpg'
+img = cv2.imread(img_path)
+
+if img is not None:
+    # Convert image to HSV color space
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    # Define lower and upper bounds for red color (lines)
+    # Red hues wrap around in HSV (0-10 and 160-180)
+    lower_red1 = np.array([0, 100, 100])
+    upper_red1 = np.array([10, 255, 255])
+    lower_red2 = np.array([160, 100, 100])
+    upper_red2 = np.array([180, 255, 255])
+
+    # Create masks for red color
+    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+    mask = mask1 + mask2
+
+    # Dilate the mask slightly to cover anti-aliased edges of the lines
+    kernel = np.ones((3, 3), np.uint8)
+    mask_dilated = cv2.dilate(mask, kernel, iterations=1)
+
+    # Use inpainting to fill the masked areas with surrounding pixels
+    cleaned_img = cv2.inpaint(img, mask_dilated, 3, cv2.INPAINT_TELEA)
+
+    # Encode the cleaned image to Base64 to embed directly in HTML
+    _, buffer = cv2.imencode('.jpg', cleaned_img)
+    jpg_as_text = base64.b64encode(buffer).decode('utf-8')
+
+    # Generate HTML content
+    html_content = f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>배경 지도 웹페이지</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cleaned Map Background</title>
     <style>
-        body {
+        body, html {{
             margin: 0;
             padding: 0;
-            /* 저장한 이미지 경로로 변경해 주세요 */
-            background-image: url('map-background.jpg'); 
+            width: 100%;
+            height: 100%;
+        }}
+        .bg-map {{
+            width: 100%;
+            height: 100vh;
+            background-image: url('data:image/jpeg;base64,{jpg_as_text}');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            background-attachment: fixed;
-            min-height: 100vh;
-        }
-
-        .content {
-            /* 지도 위에 올라갈 콘텐츠 영역 예시 */
-            padding: 40px;
+        }}
+        .content-overlay {{
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.85);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
             color: #333;
-        }
+        }}
+        h1 {{
+            margin-top: 0;
+        }}
     </style>
 </head>
 <body>
-    <div class="content">
-        <h1>제목을 입력하세요</h1>
-        <p>이곳에 지도 위에 표시할 내용을 작성할 수 있습니다.</p>
+    <div class="bg-map"></div>
+    <div class="content-overlay">
+        <h1>지도 배경 HTML</h1>
+        <p>요청하신 대로 빨간 선을 지운 이미지를 배경으로 적용했습니다.</p>
     </div>
 </body>
 </html>
+"""
+    
+    # Save the HTML file
+    file_path = 'cleaned_map_background.html'
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    print(f"HTML file created successfully.")
+else:
+    print("Failed to load image.")
