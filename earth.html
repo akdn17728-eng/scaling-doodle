@@ -1,1 +1,783 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Space</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
+  :root{ --void:#04010A; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{ background:var(--void); height:100%; overflow:hidden; }
+  body.shake{ animation: shake 0.4s linear; }
+  body.earthquake{ animation: quake 0.08s ease-in-out infinite alternate; }
 
+  @keyframes shake{
+    0%,100%{ transform:translate(0,0); }
+    10%{ transform:translate(-6px,4px); }
+    20%{ transform:translate(6px,-6px); }
+    30%{ transform:translate(-8px,-2px); }
+    40%{ transform:translate(8px,4px); }
+    50%{ transform:translate(-4px,-6px); }
+    60%{ transform:translate(6px,6px); }
+    70%{ transform:translate(-6px,2px); }
+    80%{ transform:translate(4px,-4px); }
+    90%{ transform:translate(-2px,2px); }
+  }
+
+  @keyframes quake{
+    0%{ transform:translate(-12px, 8px) rotate(-1deg); }
+    50%{ transform:translate(14px, -10px) rotate(1.2deg); }
+    100%{ transform:translate(-8px, -12px) rotate(-0.8deg); }
+  }
+
+  #warp{ position:fixed; inset:0; z-index:0; display:block; cursor:crosshair; }
+
+  .scene{
+    position:fixed; inset:0; z-index:2;
+    display:flex; align-items:center; justify-content:center;
+    filter: drop-shadow(0 0 40px rgba(200,80,255,0.15));
+    pointer-events:none;
+  }
+
+  .orbit{ position:absolute; border-radius:50%; border-style:solid; }
+  .orbit-1{ width:50vmin; height:50vmin; max-width:500px; max-height:500px;
+    border-width:1px; border-color: rgba(255,80,200,0.35);
+    animation: spin 7s linear infinite; }
+  .orbit-2{ width:38vmin; height:38vmin; max-width:380px; max-height:380px;
+    border-width:1px; border-color: rgba(80,220,255,0.35);
+    animation: spin 4.5s linear infinite reverse; }
+  .orbit-3{ width:64vmin; height:64vmin; max-width:640px; max-height:640px;
+    border-width:1px; border-color: rgba(255,210,80,0.28);
+    animation: spin 11s linear infinite; }
+
+  .moon{ position:absolute; top:-8px; left:50%; width:12px; height:12px; border-radius:50%;
+    background:#5EE7FF; box-shadow:0 0 22px #5EE7FF, 0 0 50px #5EE7FF; }
+  .moon-2{ position:absolute; bottom:-6px; left:50%; width:9px; height:9px; border-radius:50%;
+    background:#FFD25E; box-shadow:0 0 18px #FFD25E, 0 0 40px #FFD25E; }
+  .moon-3{ position:absolute; top:50%; left:-6px; width:8px; height:8px; border-radius:50%;
+    background:#FF5EC8; box-shadow:0 0 18px #FF5EC8, 0 0 40px #FF5EC8; }
+
+  @keyframes spin{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
+
+  .planet{
+    width:24vmin; height:24vmin; max-width:240px; max-height:240px; border-radius:50%;
+    background:
+      radial-gradient(circle at 30% 26%, #FFEBFA 0%, #FF5EC8 22%, #A23BD9 46%, #3B1E8A 72%, #0B0620 100%);
+    box-shadow: 0 0 60px rgba(255,94,200,0.55), 0 0 140px rgba(80,120,255,0.35),
+      inset -20px -16px 46px rgba(0,0,0,0.6);
+    position:relative; z-index:2;
+    animation: rotate-planet 6s linear infinite, pulse 2.4s ease-in-out infinite;
+  }
+  .planet::after{
+    content:''; position:absolute; inset:0; border-radius:50%;
+    background: repeating-linear-gradient(100deg, transparent 0 14px, rgba(0,0,0,0.12) 14px 16px);
+    mix-blend-mode:overlay;
+  }
+  @keyframes rotate-planet{ from{ background-position:0 0;} to{ background-position:240px 0;} }
+  @keyframes pulse{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.06);} }
+
+  .ring{
+    position:absolute; width:36vmin; height:9vmin; max-width:360px; max-height:90px;
+    border:2px solid rgba(255,210,80,0.7); border-radius:50%;
+    transform:rotate(-18deg);
+    box-shadow:0 0 30px rgba(255,210,80,0.35);
+    animation: ringspin 5s linear infinite;
+  }
+  @keyframes ringspin{ from{ transform:rotate(-18deg);} to{ transform:rotate(342deg);} }
+
+  .mini-planet{
+    position:fixed; border-radius:50%; z-index:1; pointer-events:none;
+    animation: floaty 6s ease-in-out infinite, spinslow 30s linear infinite;
+    transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+  .mini-planet.boom{ transform:scale(0.1); opacity:0; }
+  @keyframes floaty{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-16px);} }
+  @keyframes spinslow{ from{ filter:hue-rotate(0deg);} to{ filter:hue-rotate(30deg);} }
+
+  .star-sun{
+    position:fixed; top:10vh; left:12vw; width:120px; height:120px; border-radius:50%;
+    background: radial-gradient(circle, #FFFCEB 0%, #FFE38A 30%, #FF9C3D 60%, transparent 75%);
+    box-shadow: 0 0 90px rgba(255,196,80,0.9), 0 0 200px rgba(255,140,60,0.5);
+    z-index:1; animation: sunpulse 2s ease-in-out infinite; pointer-events:none;
+  }
+  @keyframes sunpulse{ 0%,100%{ transform:scale(1); filter:brightness(1);} 50%{ transform:scale(1.08); filter:brightness(1.25);} }
+
+  .flash{
+    position:fixed; inset:0; z-index:3; pointer-events:none;
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.5), transparent 60%);
+    opacity:0;
+  }
+  .nukeflash{
+    position:fixed; inset:0; z-index:9; pointer-events:none;
+    background:#fff; opacity:0;
+  }
+
+  .title{
+    position:fixed; top:74%; left:50%; transform:translate(-50%,-50%);
+    z-index:4; text-align:center; max-width:92vw; pointer-events:none;
+  }
+  .title-inner{
+    position:relative; display:inline-block;
+    font-family:'Orbitron', sans-serif;
+    font-weight:900;
+    font-size:clamp(2.2rem, 8.5vw, 5.6rem);
+    letter-spacing:0.04em;
+    color:#EAFFFC;
+    text-shadow:
+      0 0 6px rgba(94,231,255,0.9),
+      0 0 22px rgba(94,231,255,0.7),
+      0 0 46px rgba(255,45,180,0.55);
+    animation: flicker 2.6s steps(1) infinite;
+  }
+  .title-inner::before, .title-inner::after{
+    content:attr(data-text);
+    position:absolute; left:0; top:0; width:100%;
+    clip-path: inset(0 0 55% 0);
+  }
+  .title-inner::before{
+    color:#FF2DB4; transform:translate(-3px,-2px);
+    animation: glitch1 2.4s infinite linear;
+  }
+  .title-inner::after{
+    color:#5EE7FF; clip-path: inset(45% 0 0 0);
+    transform:translate(3px,2px);
+    animation: glitch2 3.1s infinite linear;
+  }
+  .scan{
+    position:fixed; inset:0; z-index:5; pointer-events:none;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 3px);
+    mix-blend-mode:overlay;
+  }
+
+  @keyframes flicker{
+    0%,89%,91%,100%{ opacity:1; }
+    90%{ opacity:0.72; }
+  }
+  @keyframes glitch1{
+    0%,100%{ clip-path: inset(0 0 55% 0); transform:translate(-3px,-2px); }
+    20%{ clip-path: inset(10% 0 40% 0); transform:translate(3px,-1px); }
+    40%{ clip-path: inset(30% 0 20% 0); transform:translate(-4px,2px); }
+    60%{ clip-path: inset(5% 0 60% 0); transform:translate(2px,1px); }
+    80%{ clip-path: inset(20% 0 35% 0); transform:translate(-2px,-3px); }
+  }
+  @keyframes glitch2{
+    0%,100%{ clip-path: inset(45% 0 0 0); transform:translate(3px,2px); }
+    25%{ clip-path: inset(60% 0 0 0); transform:translate(-3px,1px); }
+    50%{ clip-path: inset(35% 0 0 0); transform:translate(4px,-2px); }
+    75%{ clip-path: inset(55% 0 0 0); transform:translate(-2px,3px); }
+  }
+
+  .crab-wrap{
+    position:fixed; top:0; left:50%; transform:translateX(-50%);
+    width:min(56vmin, 480px); z-index:6; pointer-events:none;
+    filter: drop-shadow(0 10px 34px rgba(0,0,0,0.6));
+  }
+  .eye{
+    position:absolute; width:20px; height:20px; border-radius:50%;
+    background:#FF2D2D; box-shadow:0 0 18px #FF2D2D, 0 0 40px #FF2D2D;
+    transform:translate(-50%,-50%);
+    animation: eyepulse 1.4s ease-in-out infinite;
+  }
+  @keyframes eyepulse{ 0%,100%{ opacity:1;} 50%{ opacity:0.65;} }
+
+  .rage{
+    position:fixed; inset:0; z-index:5; pointer-events:none;
+    background: radial-gradient(circle at 50% 0%, rgba(255,20,20,0.16), transparent 55%);
+  }
+
+  .credit{
+    position:fixed; bottom:14px; left:50%; transform:translateX(-50%);
+    z-index:7; font-family:'Orbitron', sans-serif; font-size:11px;
+    letter-spacing:0.06em; color:rgba(234,255,252,0.55);
+    text-shadow:0 0 8px rgba(94,231,255,0.4);
+  }
+
+  /* 버튼 영역 컨테이너 */
+  .btn-container{
+    position:fixed; top:86%; left:50%; transform:translate(-50%,-50%);
+    z-index:8; display:flex; gap:16px; align-items:center;
+  }
+
+  .start-btn{
+    font-family:'Orbitron', sans-serif;
+    font-weight:700;
+    font-size:clamp(0.85rem, 2.2vw, 1.2rem);
+    letter-spacing:0.08em;
+    padding:0.85em 2vw;
+    color:#EAFFFC;
+    background:rgba(10,4,24,0.55);
+    border:2px solid rgba(94,231,255,0.75);
+    border-radius:999px;
+    cursor:pointer;
+    backdrop-filter:blur(2px);
+    box-shadow:
+      0 0 18px rgba(94,231,255,0.55),
+      0 0 40px rgba(255,45,180,0.25),
+      inset 0 0 14px rgba(94,231,255,0.15);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
+    animation: btnpulse 2.4s ease-in-out infinite;
+    white-space: nowrap;
+  }
+  .start-btn:hover{
+    transform:scale(1.06);
+    background:rgba(94,231,255,0.16);
+    color:#ffffff;
+    box-shadow:
+      0 0 26px rgba(94,231,255,0.9),
+      0 0 60px rgba(255,45,180,0.4),
+      inset 0 0 18px rgba(94,231,255,0.25);
+  }
+  .start-btn:active{
+    transform:scale(0.97);
+  }
+
+  /* 지진 모델링 버튼 강조 스타일 */
+  .quake-btn{
+    border-color: rgba(255,140,60,0.85);
+    box-shadow:
+      0 0 18px rgba(255,140,60,0.55),
+      0 0 40px rgba(255,45,45,0.25),
+      inset 0 0 14px rgba(255,140,60,0.15);
+  }
+  .quake-btn:hover{
+    background:rgba(255,140,60,0.2);
+    box-shadow:
+      0 0 26px rgba(255,140,60,0.9),
+      0 0 60px rgba(255,45,45,0.5),
+      inset 0 0 18px rgba(255,140,60,0.3);
+  }
+
+  @keyframes btnpulse{
+    0%,100%{ box-shadow:0 0 18px rgba(94,231,255,0.55), 0 0 40px rgba(255,45,180,0.25), inset 0 0 14px rgba(94,231,255,0.15); }
+    50%{ box-shadow:0 0 26px rgba(94,231,255,0.85), 0 0 55px rgba(255,45,180,0.4), inset 0 0 18px rgba(94,231,255,0.25); }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .orbit-1,.orbit-2,.orbit-3,.planet,.ring,.star-sun,.mini-planet{ animation:none; }
+    .title-inner, .title-inner::before, .title-inner::after{ animation:none; }
+    .eye{ animation:none; }
+    body.shake, body.earthquake{ animation:none; }
+    .start-btn{ animation:none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="warp"></canvas>
+<div class="flash" id="flash"></div>
+<div class="nukeflash" id="nukeflash"></div>
+<div class="star-sun"></div>
+
+<div id="miniPlanets"></div>
+
+<div class="scene">
+  <div class="ring"></div>
+  <div class="orbit orbit-3"><div class="moon-3"></div></div>
+  <div class="orbit orbit-1"><div class="moon"></div></div>
+  <div class="orbit orbit-2"><div class="moon-2"></div></div>
+  <div class="planet"></div>
+</div>
+
+<div class="title"><span class="title-inner" data-text="광란의 우주">광란의 우주</span></div>
+
+<div class="btn-container">
+  <button class="start-btn" id="startBtn" type="button">시작하기</button>
+  <button class="start-btn quake-btn" id="quakeBtn" type="button">지진 모델링</button>
+</div>
+
+<div class="scan"></div>
+<div class="rage"></div>
+
+<div class="crab-wrap">
+  <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+    <defs>
+      <radialGradient id="bodyGrad" cx="35%" cy="28%" r="75%">
+        <stop offset="0%" stop-color="#4a2f6e"/>
+        <stop offset="55%" stop-color="#26173c"/>
+        <stop offset="100%" stop-color="#110a1c"/>
+      </radialGradient>
+      <linearGradient id="clawGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#3a2456"/>
+        <stop offset="100%" stop-color="#160d24"/>
+      </linearGradient>
+      <linearGradient id="legGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#5EE7FF" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="#5EE7FF" stop-opacity="0.05"/>
+      </linearGradient>
+    </defs>
+
+    <path d="M95,235 Q55,250 40,285 Q38,296 46,306" fill="none" stroke="#2b1a42" stroke-width="9" stroke-linecap="round"/>
+    <path d="M95,235 Q55,250 40,285 Q38,296 46,306" fill="none" stroke="url(#legGrad)" stroke-width="3" stroke-linecap="round"/>
+    <path d="M85,222 Q40,232 18,262 Q10,275 16,292" fill="none" stroke="#2b1a42" stroke-width="9" stroke-linecap="round"/>
+    <path d="M85,222 Q40,232 18,262 Q10,275 16,292" fill="none" stroke="url(#legGrad)" stroke-width="3" stroke-linecap="round"/>
+    <path d="M100,246 Q65,268 55,300 Q52,309 61,317" fill="none" stroke="#2b1a42" stroke-width="9" stroke-linecap="round"/>
+    <path d="M100,246 Q65,268 55,300 Q52,309 61,317" fill="none" stroke="url(#legGrad)" stroke-width="3" stroke-linecap="round"/>
+    <path d="M117,256 Q88,286 82,316 Q80,323 90,328" fill="none" stroke="#2b1a42" stroke-width="9" stroke-linecap="round"/>
+    <path d="M117,256 Q88,286 82,316 Q80,323 90,328" fill="none" stroke="url(#legGrad)" stroke-width="3" stroke-linecap="round"/>
+
+    <path d="M305,235 Q345,250 360,285 Q362,296 354,306" fill="none" stroke="#2b1a42" stroke-width="9" stroke-linecap="round"/>
+    <path d="M305,235 Q345,250 360,285 Q362,296 354,306" fill="none" stroke="url(#legGrad)" stroke-width="3" stroke-linecap="round"/>
+    <path d="M315,222 Q360,232 382,262 Q390,275 384,292" fill="none" stroke="#2b1a42" stroke-width="9" stroke-linecap="round"/>
+    <path d="M315,222 Q360,232 382,262 Q390,275 384,292" fill="none" stroke="url(#legGrad)" stroke-width="3" stroke-linecap="round"/>
+    <path d="M300,246 Q335,268 345,300 Q348,309 339,317" fill="none" stroke="#2b1a42" stroke-width="9" stroke-linecap="round"/>
+    <path d="M300,246 Q335,268 345,300 Q348,309 339,317" fill="none" stroke="url(#legGrad)" stroke-width="3" stroke-linecap="round"/>
+    <path d="M283,256 Q312,286 318,316 Q320,323 310,328" fill="none" stroke="#2b1a42" stroke-width="9" stroke-linecap="round"/>
+    <path d="M283,256 Q312,286 318,316 Q320,323 310,328" fill="none" stroke="url(#legGrad)" stroke-width="3" stroke-linecap="round"/>
+
+    <path d="M120,195 Q70,178 55,135 Q48,108 68,88 Q88,72 108,90 Q120,102 116,122 Q135,112 148,128 Q158,142 148,158 Q136,176 120,195 Z"
+      fill="url(#clawGrad)" stroke="#5EE7FF" stroke-width="1.5" stroke-opacity="0.6"/>
+    <path d="M280,195 Q330,178 345,135 Q352,108 332,88 Q312,72 292,90 Q280,102 284,122 Q265,112 252,128 Q242,142 252,158 Q264,176 280,195 Z"
+      fill="url(#clawGrad)" stroke="#5EE7FF" stroke-width="1.5" stroke-opacity="0.6"/>
+
+    <ellipse cx="200" cy="205" rx="128" ry="80" fill="url(#bodyGrad)" stroke="#8B6FD9" stroke-width="3"/>
+    <path d="M100,190 Q200,150 300,190" fill="none" stroke="#3a2456" stroke-width="2" stroke-opacity="0.7"/>
+    <path d="M95,215 Q200,178 305,215" fill="none" stroke="#3a2456" stroke-width="2" stroke-opacity="0.6"/>
+    <path d="M105,240 Q200,210 295,240" fill="none" stroke="#3a2456" stroke-width="2" stroke-opacity="0.5"/>
+    <circle cx="150" cy="185" r="4" fill="#5a3d80" opacity="0.6"/>
+    <circle cx="245" cy="190" r="3.5" fill="#5a3d80" opacity="0.6"/>
+    <circle cx="175" cy="225" r="3" fill="#5a3d80" opacity="0.5"/>
+    <circle cx="225" cy="230" r="4" fill="#5a3d80" opacity="0.5"/>
+    <circle cx="200" cy="165" r="3" fill="#5a3d80" opacity="0.6"/>
+
+    <path d="M120,190 Q95,150 105,112" fill="none" stroke="#8B6FD9" stroke-width="8" stroke-linecap="round"/>
+    <path d="M280,190 Q305,150 295,112" fill="none" stroke="#8B6FD9" stroke-width="8" stroke-linecap="round"/>
+    <path d="M120,190 Q95,150 105,112" fill="none" stroke="#c9b6f4" stroke-width="2" stroke-opacity="0.5" stroke-linecap="round"/>
+    <path d="M280,190 Q305,150 295,112" fill="none" stroke="#c9b6f4" stroke-width="2" stroke-opacity="0.5" stroke-linecap="round"/>
+
+    <circle cx="105" cy="103" r="21" fill="#160d24" stroke="#3a2456" stroke-width="2"/>
+    <circle cx="295" cy="103" r="21" fill="#160d24" stroke="#3a2456" stroke-width="2"/>
+    <circle class="eye" cx="105" cy="103" r="15" fill="#FF2D2D" style="filter:drop-shadow(0 0 16px #FF2D2D)"/>
+    <circle class="eye" cx="295" cy="103" r="15" fill="#FF2D2D" style="filter:drop-shadow(0 0 16px #FF2D2D)"/>
+    <circle cx="105" cy="103" r="5" fill="#3A0000"/>
+    <circle cx="295" cy="103" r="5" fill="#3A0000"/>
+
+    <path d="M175,255 L165,275 L182,266 Z" fill="#1c1130" stroke="#5EE7FF" stroke-width="1"/>
+    <path d="M195,260 L188,282 L205,270 Z" fill="#1c1130" stroke="#5EE7FF" stroke-width="1"/>
+    <path d="M215,260 L222,282 L205,270 Z" fill="#1c1130" stroke="#5EE7FF" stroke-width="1"/>
+    <path d="M235,255 L245,275 L228,266 Z" fill="#1c1130" stroke="#5EE7FF" stroke-width="1"/>
+  </svg>
+</div>
+
+<div class="credit">by 김승한</div>
+
+<script>
+  const canvas = document.getElementById('warp');
+  const ctx = canvas.getContext('2d');
+  const flashEl = document.getElementById('flash');
+  const nukeflashEl = document.getElementById('nukeflash');
+  let w, h, cx, cy, stars, shooting = [], particles = [], galaxies = [], comets = [], ships = [], shocks = [];
+
+  const neon = ['255,94,200','94,231,255','255,210,94','168,94,255','94,255,200'];
+  const nukeColors = ['255,180,60','255,90,40','255,230,150','255,255,255'];
+
+  const eyeEls = document.querySelectorAll('.crab-wrap .eye');
+  let eyeL = {x:0,y:0}, eyeR = {x:0,y:0};
+  function updateEyes(){
+    const rL = eyeEls[0].getBoundingClientRect();
+    const rR = eyeEls[1].getBoundingClientRect();
+    eyeL = { x: rL.left + rL.width/2, y: rL.top + rL.height/2 };
+    eyeR = { x: rR.left + rR.width/2, y: rR.top + rR.height/2 };
+  }
+
+  function drawLaser(origin, angle){
+    const len = Math.max(w,h)*1.6;
+    const ex = origin.x + Math.cos(angle)*len;
+    const ey = origin.y + Math.sin(angle)*len;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(255,40,40,0.85)';
+    ctx.lineWidth = 5;
+    ctx.shadowColor = 'rgba(255,40,40,0.9)';
+    ctx.shadowBlur = 22;
+    ctx.beginPath();
+    ctx.moveTo(origin.x, origin.y);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,200,200,0.9)';
+    ctx.lineWidth = 1.6;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(origin.x, origin.y);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.restore();
+
+    if(Math.random() < 0.05){
+      const tt = Math.random();
+      particles.push({
+        x: origin.x + (ex-origin.x)*tt, y: origin.y + (ey-origin.y)*tt,
+        vx:(Math.random()-0.5)*3, vy:(Math.random()-0.5)*3,
+        life:0, maxLife:20, color:'255,80,80'
+      });
+    }
+  }
+
+  function makeGalaxy(){
+    const armCount = 2 + Math.floor(Math.random()*2);
+    const points = [];
+    const total = 130;
+    for(let i=0;i<total;i++){
+      const arm = i % armCount;
+      const t = i/total;
+      const angle = t*Math.PI*5 + arm*(Math.PI*2/armCount);
+      const r = t*1;
+      points.push({
+        ox: Math.cos(angle)*r,
+        oy: Math.sin(angle)*r*0.55,
+        rad: Math.random()*1.3+0.4
+      });
+    }
+    return {
+      x: Math.random()*w,
+      y: Math.random()*h*0.8,
+      scale: Math.random()*70 + 50,
+      rot: Math.random()*Math.PI*2,
+      spin: (Math.random()*0.3+0.08) * (Math.random()<0.5?-1:1),
+      color: neon[Math.floor(Math.random()*neon.length)],
+      points
+    };
+  }
+
+  function makeComet(){
+    const fromLeft = Math.random() < 0.5;
+    const y = Math.random()*h*0.8 + h*0.05;
+    return {
+      x: fromLeft ? -60 : w+60,
+      y,
+      vx: (fromLeft ? 1 : -1) * (Math.random()*3+2),
+      vy: (Math.random()-0.5)*1.2,
+      size: Math.random()*3+3.5,
+      life:0
+    };
+  }
+
+  function makeShip(){
+    const fromLeft = Math.random() < 0.5;
+    const y = Math.random()*h*0.85 + h*0.05;
+    const color = neon[Math.floor(Math.random()*neon.length)];
+    return {
+      x: fromLeft ? -80 : w+80,
+      y,
+      vx: (fromLeft ? 1 : -1) * (Math.random()*3.5+2.5),
+      vy: (Math.random()-0.5)*0.4,
+      dir: fromLeft ? 1 : -1,
+      size: Math.random()*8+10,
+      color,
+      wobble: Math.random()*Math.PI*2
+    };
+  }
+
+  const planetPalettes = [
+    ['#FFEBFA','#FF5EC8','#A23BD9','#3B1E8A'],
+    ['#EAFBFF','#5EE7FF','#2C8FBF','#123055'],
+    ['#FFF6E0','#FFD25E','#D98A2B','#5C3A10'],
+    ['#EFFFE8','#7CE07C','#2E8B4E','#123A1E'],
+    ['#FFE8EE','#FF7A9C','#B0316E','#3E0F26'],
+    ['#F0EBFF','#B58CFF','#6A3FBF','#241454']
+  ];
+
+  const miniHost = document.getElementById('miniPlanets');
+  let miniPlanets = [];
+  function spawnMiniPlanet(el){
+    const size = Math.random()*70 + 40;
+    const pal = planetPalettes[Math.floor(Math.random()*planetPalettes.length)];
+    const x = Math.random()*(w-size);
+    const y = Math.random()*(h*0.85 - size);
+    el.style.width = size+'px';
+    el.style.height = size+'px';
+    el.style.left = x+'px';
+    el.style.top = y+'px';
+    el.style.background = `radial-gradient(circle at 32% 28%, ${pal[0]} 0%, ${pal[1]} 30%, ${pal[2]} 60%, ${pal[3]} 100%)`;
+    el.style.boxShadow = `0 0 ${size*0.5}px ${pal[1]}66, inset -${size*0.12}px -${size*0.1}px ${size*0.3}px rgba(0,0,0,0.5)`;
+    el.style.animationDuration = `${5+Math.random()*4}s, ${20+Math.random()*20}s`;
+    el.style.animationDelay = `${Math.random()*3}s, 0s`;
+  }
+  function buildMiniPlanets(count){
+    miniHost.innerHTML = '';
+    miniPlanets = [];
+    for(let i=0;i<count;i++){
+      const el = document.createElement('div');
+      el.className = 'mini-planet';
+      spawnMiniPlanet(el);
+      miniHost.appendChild(el);
+      miniPlanets.push(el);
+    }
+  }
+
+  function resize(){
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    cx = w/2; cy = h/2;
+    const count = Math.floor((w*h)/900);
+    stars = Array.from({length: count}, () => ({
+      angle: Math.random()*Math.PI*2,
+      dist: Math.random()*Math.max(w,h)*0.7 + 10,
+      speed: Math.random()*4 + 2,
+      len: Math.random()*14 + 6,
+      color: neon[Math.floor(Math.random()*neon.length)]
+    }));
+    galaxies = Array.from({length: 4}, makeGalaxy);
+    comets = Array.from({length: 6}, makeComet);
+    ships = Array.from({length: 5}, makeShip);
+    buildMiniPlanets(9);
+    updateEyes();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function maybeSpawnShooting(){
+    if(Math.random() < 0.035){
+      const x = Math.random()*w;
+      const ang = Math.random()*Math.PI*0.3 + Math.PI*0.6;
+      shooting.push({ x, y:-10, vx: Math.cos(ang)*11, vy: Math.sin(ang)*11,
+        life:0, maxLife: 40, color: neon[Math.floor(Math.random()*neon.length)] });
+    }
+  }
+
+  function maybeBurst(){
+    if(Math.random() < 0.012){
+      const px = Math.random()*w*0.6 + w*0.2;
+      const py = Math.random()*h*0.6 + h*0.2;
+      const color = neon[Math.floor(Math.random()*neon.length)];
+      for(let i=0;i<26;i++){
+        const ang = (Math.PI*2*i)/26;
+        particles.push({ x:px, y:py, vx: Math.cos(ang)*(Math.random()*3+2),
+          vy: Math.sin(ang)*(Math.random()*3+2), life:0, maxLife: 34, color });
+      }
+      flashEl.style.opacity = '0.35';
+      setTimeout(()=>{ flashEl.style.transition='opacity 0.5s'; flashEl.style.opacity='0'; }, 30);
+      setTimeout(()=>{ flashEl.style.transition=''; }, 550);
+    }
+  }
+
+  function drawGalaxy(g, t){
+    ctx.save();
+    ctx.translate(g.x, g.y);
+    ctx.rotate(g.rot + t*g.spin*0.0006);
+    for(const p of g.points){
+      const px = p.ox*g.scale;
+      const py = p.oy*g.scale;
+      const d = Math.hypot(p.ox,p.oy);
+      const alpha = Math.max(0, 0.55 - d*0.45);
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(${g.color},${alpha})`;
+      ctx.arc(px,py,p.rad,0,Math.PI*2);
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(${g.color},0.9)`;
+    ctx.arc(0,0,3,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawShip(sp, t){
+    ctx.save();
+    ctx.translate(sp.x, sp.y + Math.sin(t*0.004 + sp.wobble)*6);
+    ctx.scale(sp.dir, 1);
+    ctx.beginPath();
+    ctx.moveTo(sp.size, 0);
+    ctx.lineTo(-sp.size*0.7, -sp.size*0.45);
+    ctx.lineTo(-sp.size*0.35, 0);
+    ctx.lineTo(-sp.size*0.7, sp.size*0.45);
+    ctx.closePath();
+    ctx.fillStyle = `rgb(${sp.color})`;
+    ctx.shadowColor = `rgb(${sp.color})`;
+    ctx.shadowBlur = 14;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    const grad = ctx.createLinearGradient(-sp.size*0.35, 0, -sp.size*2.4, 0);
+    grad.addColorStop(0, `rgba(${sp.color},0.8)`);
+    grad.addColorStop(1, `rgba(${sp.color},0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(-sp.size*0.35, -sp.size*0.16);
+    ctx.lineTo(-sp.size*2.4, 0);
+    ctx.lineTo(-sp.size*0.35, sp.size*0.16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawComet(c){
+    const tailLen = 15;
+    const grad = ctx.createLinearGradient(c.x, c.y, c.x - c.vx*tailLen, c.y - c.vy*tailLen);
+    grad.addColorStop(0, 'rgba(210,240,255,0.95)');
+    grad.addColorStop(1, 'rgba(210,240,255,0)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = c.size;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(c.x - c.vx*tailLen, c.y - c.vy*tailLen);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.fillStyle = '#EAFBFF';
+    ctx.arc(c.x, c.y, c.size*0.7, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawShock(s){
+    const p = s.life / s.maxLife;
+    const r = p * s.maxR;
+    const alpha = 1 - p;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = `rgba(255,200,100,${alpha*0.9})`;
+    ctx.lineWidth = 10 * (1-p) + 2;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, r, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255,255,255,${alpha*0.6})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, r*0.85, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function nuke(x, y){
+    shocks.push({ x, y, life:0, maxLife:45, maxR: Math.max(w,h)*0.5 });
+
+    for(let i=0;i<70;i++){
+      const ang = Math.random()*Math.PI*2;
+      const spd = Math.random()*7 + 2;
+      particles.push({
+        x, y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd,
+        life:0, maxLife: 40+Math.random()*20,
+        color: nukeColors[Math.floor(Math.random()*nukeColors.length)]
+      });
+    }
+
+    nukeflashEl.style.transition = 'none';
+    nukeflashEl.style.opacity = '0.85';
+    requestAnimationFrame(()=>{
+      nukeflashEl.style.transition = 'opacity 0.6s ease-out';
+      nukeflashEl.style.opacity = '0';
+    });
+
+    document.body.classList.remove('shake');
+    void document.body.offsetWidth;
+    document.body.classList.add('shake');
+
+    for(const el of miniPlanets){
+      const r = el.getBoundingClientRect();
+      const px = r.left + r.width/2, py = r.top + r.height/2;
+      if(Math.hypot(px-x, py-y) < 260){
+        el.classList.add('boom');
+        setTimeout(()=>{ spawnMiniPlanet(el); el.classList.remove('boom'); }, 380);
+      }
+    }
+  }
+  canvas.addEventListener('click', (e)=> nuke(e.clientX, e.clientY));
+
+  document.getElementById('startBtn').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    window.location.href = 'main.html';
+  });
+
+  // 지진 모델링 실행 로직
+  let isEarthquakeActive = false;
+  document.getElementById('quakeBtn').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(isEarthquakeActive) return;
+    isEarthquakeActive = true;
+
+    document.body.classList.add('earthquake');
+
+    // 충격파 연속 발생 및 파티클 분사
+    let quakeInterval = setInterval(() => {
+      const qx = Math.random() * w;
+      const qy = Math.random() * h;
+      shocks.push({ x: qx, y: qy, life: 0, maxLife: 50, maxR: Math.max(w, h) * 0.6 });
+
+      for(let i=0; i<15; i++){
+        const ang = Math.random() * Math.PI * 2;
+        const spd = Math.random() * 8 + 3;
+        particles.push({
+          x: qx, y: qy,
+          vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd,
+          life: 0, maxLife: 30 + Math.random()*20,
+          color: '255,100,50'
+        });
+      }
+    }, 150);
+
+    // 2.5초 후 진동 멈춤
+    setTimeout(() => {
+      clearInterval(quakeInterval);
+      document.body.classList.remove('earthquake');
+      isEarthquakeActive = false;
+    }, 2500);
+  });
+
+  function tick(t){
+    ctx.fillStyle = 'rgba(4,1,10,0.35)';
+    ctx.fillRect(0,0,w,h);
+
+    for(const g of galaxies) drawGalaxy(g, t);
+
+    for(const s of stars){
+      s.dist += s.speed;
+      if(s.dist > Math.max(w,h)*0.75){ s.dist = 10; s.angle = Math.random()*Math.PI*2; }
+      const x1 = cx + Math.cos(s.angle)*s.dist;
+      const y1 = cy + Math.sin(s.angle)*s.dist;
+      const x0 = cx + Math.cos(s.angle)*(s.dist - s.len);
+      const y0 = cy + Math.sin(s.angle)*(s.dist - s.len);
+      const alpha = Math.min(1, s.dist/300);
+      ctx.strokeStyle = `rgba(${s.color},${alpha*0.85})`;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+    }
+
+    maybeSpawnShooting();
+    shooting = shooting.filter(sh => sh.life < sh.maxLife);
+    for(const sh of shooting){
+      const alpha = 1 - (sh.life/sh.maxLife);
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(${sh.color},${alpha})`;
+      ctx.lineWidth = 2;
+      ctx.moveTo(sh.x, sh.y);
+      ctx.lineTo(sh.x - sh.vx*6, sh.y - sh.vy*6);
+      ctx.stroke();
+      sh.x += sh.vx; sh.y += sh.vy; sh.life++;
+    }
+
+    comets = comets.filter(c => c.x > -100 && c.x < w+100);
+    for(const c of comets) drawComet(c);
+    for(const c of comets){ c.x += c.vx; c.y += c.vy; }
+    if(Math.random() < 0.03) comets.push(makeComet());
+
+    ships = ships.filter(sp => sp.x > -150 && sp.x < w+150);
+    for(const sp of ships) drawShip(sp, t);
+    for(const sp of ships){ sp.x += sp.vx; sp.y += sp.vy; }
+    if(Math.random() < 0.015) ships.push(makeShip());
+
+    maybeBurst();
+    particles = particles.filter(p => p.life < p.maxLife);
+    for(const p of particles){
+      const alpha = 1 - (p.life/p.maxLife);
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(${p.color},${alpha})`;
+      ctx.arc(p.x, p.y, 2.4, 0, Math.PI*2);
+      ctx.fill();
+      p.x += p.vx; p.y += p.vy; p.life++;
+    }
+
+    shocks = shocks.filter(s => s.life < s.maxLife);
+    for(const s of shocks){ drawShock(s); s.life++; }
+
+    const swing = Math.sin(t*0.0012)*0.55;
+    drawLaser(eyeL, Math.PI/2 - 0.35 + swing);
+    drawLaser(eyeR, Math.PI/2 + 0.35 - swing);
+
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+</script>
+
+</body>
+</html>
