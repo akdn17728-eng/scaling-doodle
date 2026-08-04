@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>광란의 우주 : 카드 대혼란 (Card Deck Edition)</title>
+<title>광란의 우주 : 하드코어 보스 (Hardcore Boss Edition)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
@@ -11,19 +11,19 @@
   html,body{ background:var(--void); height:100%; overflow:hidden; font-family:'Orbitron',sans-serif; }
   #game{ position:fixed; inset:0; display:block; }
 
-  body.shake{ animation: shake 0.25s linear; }
+  /* 흔들림 강도 완화 (어지러움 방지) */
+  body.shake{ animation: shake 0.15s linear; }
   @keyframes shake{
     0%,100%{ transform:translate(0,0); }
-    20%{ transform:translate(-10px,8px); }
-    40%{ transform:translate(10px,-8px); }
-    60%{ transform:translate(-8px,-5px); }
-    80%{ transform:translate(8px,5px); }
+    25%{ transform:translate(-4px,3px); }
+    50%{ transform:translate(4px,-3px); }
+    75%{ transform:translate(-3px,-2px); }
   }
 
   /* ---------- HUD ---------- */
   #hud{
     position:fixed; top:0; left:0; right:0; z-index:20;
-    display:flex; align-items:center; gap:14px;
+    display:flex; align-items:center; gap:12px;
     padding:10px 16px; pointer-events:none;
     background:linear-gradient(rgba(4,1,10,0.85), rgba(4,1,10,0));
   }
@@ -35,22 +35,31 @@
   #stageLabel{ font-size:14px; font-weight:900; color:#5EE7FF; }
   #lives{ display:flex; gap:4px; flex-wrap:wrap; max-width:140px; }
   .heart{ width:14px; height:14px; border-radius:50% 50% 50% 0; background:#FF5EC8; transform:rotate(-45deg); box-shadow:0 0 8px #FF5EC8; }
-  #progressWrap{
-    flex:1; height:10px; border-radius:6px; background:rgba(255,255,255,0.08);
-    border:1px solid rgba(94,231,255,0.35); overflow:hidden; max-width:340px; min-width:80px;
+  
+  #bossBarWrap{
+    flex:1; height:12px; border-radius:6px; background:rgba(255,255,255,0.08);
+    border:1px solid #FF0055; overflow:hidden; max-width:300px; min-width:80px;
+    position:relative; box-shadow:0 0 10px rgba(255,0,85,0.3);
   }
-  #progressBar{ height:100%; width:100%; background:linear-gradient(90deg,#5EE7FF,#FF2D70); transition:width 0.25s ease; }
+  #bossBar{ height:100%; width:100%; background:linear-gradient(90deg,#FF0055,#FFD25E); transition:width 0.15s ease; }
+  #bossTitle{
+    position:absolute; inset:0; display:flex; align-items:center; justify-center:center;
+    font-size:9px; font-weight:900; color:#FFF; text-shadow:0 0 4px #000; text-align:center;
+  }
+
   #score{ font-size:13px; color:#FFD25E; text-shadow:0 0 8px rgba(255,210,80,0.7); }
   
   #grenadeHud{ display:flex; align-items:center; gap:6px; font-size:11px; color:#FF9900; font-weight:700; }
-  #grenadeBarWrap{ width:50px; height:8px; border-radius:4px; background:rgba(255,255,255,0.1); border:1px solid #FF9900; overflow:hidden; }
+  #grenadeBarWrap{ width:45px; height:8px; border-radius:4px; background:rgba(255,255,255,0.1); border:1px solid #FF9900; overflow:hidden; }
   #grenadeBar{ height:100%; width:100%; background:#FF9900; }
 
-  #muteBtn{
-    pointer-events:auto; cursor:pointer; background:rgba(10,4,24,0.5);
+  .hud-btn{
+    pointer-events:auto; cursor:pointer; background:rgba(10,4,24,0.6);
     border:1px solid rgba(94,231,255,0.5); color:#EAFFFC; border-radius:8px;
-    font-family:'Orbitron',sans-serif; font-size:11px; padding:6px 10px;
+    font-family:'Orbitron',sans-serif; font-size:10px; padding:5px 8px;
+    transition:background 0.2s;
   }
+  .hud-btn:hover{ background:rgba(94,231,255,0.25); }
 
   /* ---------- Overlays ---------- */
   .overlay{
@@ -126,10 +135,14 @@
 <div id="hud">
   <div class="hud-block" id="stageLabel">STAGE 1 / 100</div>
   <div class="hud-block" id="lives"></div>
-  <div id="progressWrap"><div id="progressBar"></div></div>
+  <div id="bossBarWrap">
+    <div id="bossBar"></div>
+    <div id="bossTitle">BOSS HP</div>
+  </div>
   <div id="grenadeHud">💣 <div id="grenadeBarWrap"><div id="grenadeBar"></div></div></div>
   <div class="hud-block" id="score">SCORE 0</div>
-  <button id="muteBtn">🔊 소리</button>
+  <button class="hud-btn" id="shakeBtn">📳 흔들림 켬</button>
+  <button class="hud-btn" id="muteBtn">🔊 소리</button>
 </div>
 
 <div id="touchControls">
@@ -138,12 +151,11 @@
 </div>
 
 <div class="overlay" id="screenTitle">
-  <h1>광란의 우주 : 카드 대혼란</h1>
-  <p class="sub">부채꼴 탄막 & 카드 드래프트 시스템</p>
-  <p>✨ <b>스테이지 클리어 시 3장의 무작위 카드 선택!</b><br>
-  🔫 <b>부채꼴 모양으로 넓게 퍼지는 메인 총격</b><br>
-  👹 <b>거대화된 보스의 강력한 이중 기믹 탄막</b><br>
-  ⌨️ <b>[Enter] 키</b>로 빠르게 시작할 수 있습니다.</p>
+  <h1>광란의 우주 : 하드코어 보스</h1>
+  <p class="sub">스테이지별 보스 스케일링 폭증 모드</p>
+  <p>👹 <b>보스의 체력과 공격성이 스테이지마다 기하급수적으로 폭증합니다!</b><br>
+  🃏 <b>카드를 전략적으로 선택하여 압도적인 보스를 격파하세요.</b><br>
+  📳 <b>어지러우시면 상단의 '흔들림 끔' 버튼을 활용하세요.</b></p>
   <button class="neon-btn" id="startBtn">출격하기 (Enter)</button>
 </div>
 
@@ -179,8 +191,8 @@
   let W, H;
   const HUD_H = 70;
 
-  // ---------------- Audio ----------------
-  let actx=null, muted=false;
+  // ---------------- Options & Audio ----------------
+  let actx=null, muted=false, shakeEnabled=true;
   function ensureAudio(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
   function beep(type){
     if(muted || !actx) return;
@@ -206,21 +218,31 @@
     o.start(now); o.stop(now+dur+0.02);
   }
 
+  function triggerShake(){
+    if(!shakeEnabled) return;
+    document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake');
+  }
+
   document.getElementById('muteBtn').addEventListener('click', ()=>{
     muted = !muted;
     document.getElementById('muteBtn').textContent = muted ? '🔇 음소거' : '🔊 소리';
   });
 
-  // ---------------- Game Modifiers (Cards System) ----------------
+  document.getElementById('shakeBtn').addEventListener('click', ()=>{
+    shakeEnabled = !shakeEnabled;
+    document.getElementById('shakeBtn').textContent = shakeEnabled ? '📳 흔들림 켬' : '📴 흔들림 끔';
+  });
+
+  // ---------------- Game Modifiers ----------------
   let playerStats = {
-    bulletCount: 3,        // 부채꼴 총알 개수
-    bulletSpread: 0.35,     // 부채꼴 확산 각도
-    shootInterval: 0.14,    // 연사 속도
-    bulletDamage: 1.5,     // 발사체 데미지
-    moveSpeedMult: 1.0,     // 플레이어 이동 속도 배율
-    grenadeCdMult: 1.0,     // 수류탄 쿨타임 배율
-    enemySpeedMult: 1.0,    // 적 이동 속도 배율
-    enemyHpMult: 1.0,       // 적 체력 배율
+    bulletCount: 3,
+    bulletSpread: 0.35,
+    shootInterval: 0.14,
+    bulletDamage: 1.5,
+    moveSpeedMult: 1.0,
+    grenadeCdMult: 1.0,
+    enemySpeedMult: 1.0,
+    enemyHpMult: 1.0,
   };
 
   function resetPlayerStats(){
@@ -239,13 +261,13 @@
   const CARD_POOL = [
     { type:'buff', icon:'🔫', title:'산탄 화력 증대', desc:'부채꼴 발사체가 +2발 증가하지만 탄 퍼짐이 넓어집니다.', apply:()=>{ playerStats.bulletCount += 2; playerStats.bulletSpread += 0.12; } },
     { type:'buff', icon:'⚡', title:'초고속 연사', desc:'총기 공격 속도가 25% 빨라집니다.', apply:()=>{ playerStats.shootInterval *= 0.75; } },
-    { type:'buff', icon:'💥', title:'플라즈마 과충전', desc:'총알 피해량이 40% 증가합니다.', apply:()=>{ playerStats.bulletDamage *= 1.4; } },
+    { type:'buff', icon:'💥', title:'플라즈마 과충전', desc:'총알 피해량이 45% 증가합니다.', apply:()=>{ playerStats.bulletDamage *= 1.45; } },
     { type:'buff', icon:'🏃', title:'부스터 엔진', desc:'이동 속도가 20% 상승합니다.', apply:()=>{ playerStats.moveSpeedMult *= 1.2; } },
     { type:'buff', icon:'💣', title:'수류탄 가속기', desc:'수류탄 자동 발사 쿨타임이 25% 감소합니다.', apply:()=>{ playerStats.grenadeCdMult *= 0.75; } },
     { type:'buff', icon:'❤️', title:'긴급 수리 Kit', desc:'플레이어 생명이 +1 회복됩니다.', apply:()=>{ lives = Math.min(8, lives + 1); } },
     
-    { type:'debuff', icon:'👾', title:'외계 중력장', desc:'플레이어 이동 속도가 15% 감소하는 대신, 총알 데미지가 50% 폭증합니다.', apply:()=>{ playerStats.moveSpeedMult *= 0.85; playerStats.bulletDamage *= 1.5; } },
-    { type:'debuff', icon:'👹', title:'보스 분노 증대', desc:'적의 체력이 30% 증가하지만, 수류탄 쿨타임이 40% 감소합니다.', apply:()=>{ playerStats.enemyHpMult *= 1.3; playerStats.grenadeCdMult *= 0.6; } },
+    { type:'debuff', icon:'👾', title:'외계 중력장', desc:'플레이어 이동 속도가 15% 감소하는 대신, 총알 데미지가 60% 폭증합니다.', apply:()=>{ playerStats.moveSpeedMult *= 0.85; playerStats.bulletDamage *= 1.6; } },
+    { type:'debuff', icon:'👹', title:'보스 분노 증대', desc:'적의 체력이 40% 증가하지만, 수류탄 쿨타임이 40% 감소합니다.', apply:()=>{ playerStats.enemyHpMult *= 1.4; playerStats.grenadeCdMult *= 0.6; } },
     { type:'debuff', icon:'⚡', title:'우주 과부하', desc:'적들의 이동속도가 25% 빨라지지만, 부채꼴 발사체가 +1발 추가됩니다.', apply:()=>{ playerStats.enemySpeedMult *= 1.25; playerStats.bulletCount += 1; } }
   ];
 
@@ -369,13 +391,20 @@
   buildStars();
   window.addEventListener('resize', buildStars);
 
-  // ---------------- Stage Generation ----------------
+  // ---------------- Stage & Boss Generation ----------------
   function genStage(n){
-    const multiplier = (1.0 + (n - 1) * 0.06) * playerStats.enemyHpMult;
-    const enemyCount = Math.min(22, 4 + Math.floor(n * 0.4));
-    const speedBase = (100 + Math.min(220, n * 2.5)) * playerStats.enemySpeedMult;
-    const bossHp = Math.floor((60 + n * 18) * multiplier);
-    return { enemyCount, speedBase, bossHp, multiplier, n };
+    const generalMultiplier = (1.0 + (n - 1) * 0.08) * playerStats.enemyHpMult;
+    
+    // 👹 보스 체력 배율 대폭 상승 (기본 100 + n * 45 * 배율)
+    const bossHp = Math.floor((100 + n * 45 + Math.pow(n, 1.4) * 8) * generalMultiplier);
+    
+    const enemyCount = Math.min(25, 5 + Math.floor(n * 0.5));
+    const speedBase = (110 + Math.min(240, n * 3.0)) * playerStats.enemySpeedMult;
+    
+    // 보스 공격 속도 가속 (최소 0.5초까지 난사)
+    const bossAttackRate = Math.max(0.5, 1.8 - n * 0.035);
+
+    return { enemyCount, speedBase, bossHp, bossAttackRate, multiplier: generalMultiplier, n };
   }
 
   function rand(a,b){ return a + Math.random()*(b-a); }
@@ -391,40 +420,40 @@
     let speed, r, hp, color;
     
     if(boss){
-      speed = cfg.speedBase * 0.35;
-      r = 95; // 보스 크기 대폭 확대 (2.5배 크기)
+      speed = cfg.speedBase * 0.38;
+      r = 95;
       hp = cfg.bossHp;
       color = '#B000FF';
     } else if(type==='hunter'){
       speed = cfg.speedBase * 1.1; r = 24;
-      hp = Math.floor((15 + cfg.n * 0.5) * cfg.multiplier);
+      hp = Math.floor((18 + cfg.n * 0.6) * cfg.multiplier);
       color = '#FF3300';
     } else if(type==='scout'){
       speed = cfg.speedBase * 0.85; r = 20;
-      hp = Math.floor((8 + cfg.n * 0.3) * cfg.multiplier);
+      hp = Math.floor((10 + cfg.n * 0.4) * cfg.multiplier);
       color = '#FF00A0';
     } else {
       speed = cfg.speedBase * 0.6; r = 22;
-      hp = Math.floor((4 + cfg.n * 0.2) * cfg.multiplier);
+      hp = Math.floor((5 + cfg.n * 0.3) * cfg.multiplier);
       color = '#00E5FF';
     }
     
     enemies.push({
       x,y, vx: Math.cos(ang)*speed, vy: Math.sin(ang)*speed, r, hp, maxHp:hp,
       type: boss?'boss':type, speed, color, dead:false, flash:0, spin: Math.random()*Math.PI*2,
-      shootCd: rand(0.8, 1.8)
+      shootCd: rand(0.5, cfg.bossAttackRate)
     });
   }
 
   function spawnStageEntities(cfg){
     enemies = []; enemyBullets = []; playerBullets = []; grenades = [];
-    spawnEnemy(null, cfg, true); // 매 스테이지 보스 필수 생성
+    spawnEnemy(null, cfg, true); // 매 스테이지 강화된 보스 생성
 
     for(let i=0; i<cfg.enemyCount; i++){
       let type = 'asteroid';
       const r = Math.random();
-      if(cfg.n >= 5 && r < 0.35) type = 'hunter';
-      else if(cfg.n >= 2 && r < 0.70) type = 'scout';
+      if(cfg.n >= 4 && r < 0.40) type = 'hunter';
+      else if(cfg.n >= 2 && r < 0.75) type = 'scout';
       spawnEnemy(type, cfg, false);
     }
   }
@@ -434,7 +463,7 @@
     stageCfg = genStage(n);
     bossDefeated = false; stageCleared = false;
     
-    lives = DEFAULT_LIVES; // 매 스테이지 체력 복구
+    lives = DEFAULT_LIVES;
 
     player.x = W/2; player.y = H/2 + 40;
     player.vx=0; player.vy=0; player.inv=1200;
@@ -444,7 +473,7 @@
     updateHUDStatic();
   }
 
-  // ---------------- Player Weapon Systems (Fan Spread) ----------------
+  // ---------------- Player Weapon Systems ----------------
   function autoShoot(dt){
     player.autoShootCd -= dt;
     if(player.autoShootCd <= 0){
@@ -454,7 +483,6 @@
       const count = playerStats.bulletCount;
       const totalSpread = playerStats.bulletSpread;
 
-      // 부채꼴 회전각 계산
       for(let i=0; i<count; i++){
         const spreadOffset = count > 1 ? (i / (count - 1) - 0.5) * totalSpread : 0;
         const ang = faceAng + spreadOffset;
@@ -517,14 +545,14 @@
         if(Math.abs(normAngle(ang-faceAng)) < Math.PI*0.75){
           en.hp -= 20 * playerStats.bulletDamage;
           en.flash = 0.25;
-          const push = 380;
+          const push = en.type==='boss' ? 80 : 380;
           en.vx += Math.cos(ang)*push; en.vy += Math.sin(ang)*push;
           spawnParticles(en.x, en.y, '#5EE7FF', 14);
 
           if(en.hp <= 0){
             en.dead = true;
-            score += en.type==='boss' ? 600 : 35;
-            spawnParticles(en.x, en.y, en.color, en.type==='boss'?60:20);
+            score += en.type==='boss' ? 1000 : 35;
+            spawnParticles(en.x, en.y, en.color, en.type==='boss'?80:20);
             beep('kill');
             if(en.type==='boss') bossDefeated = true;
           }
@@ -572,7 +600,7 @@
 
       if(g.progress >= 1.0){
         g.exploded = true;
-        document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake');
+        triggerShake();
         spawnParticles(g.x, g.y, '#FF9900', 45);
         spawnParticles(g.x, g.y, '#FF2D3D', 30);
         beep('grenade');
@@ -584,12 +612,13 @@
             en.hp -= 35 * playerStats.bulletDamage;
             en.flash = 0.3;
             const ang = Math.atan2(en.y - g.y, en.x - g.x);
-            en.vx += Math.cos(ang)*450; en.vy += Math.sin(ang)*450;
+            const push = en.type==='boss' ? 100 : 450;
+            en.vx += Math.cos(ang)*push; en.vy += Math.sin(ang)*push;
 
             if(en.hp <= 0){
               en.dead = true;
-              score += en.type==='boss' ? 600 : 35;
-              spawnParticles(en.x, en.y, en.color, en.type==='boss'?60:20);
+              score += en.type==='boss' ? 1000 : 35;
+              spawnParticles(en.x, en.y, en.color, en.type==='boss'?80:20);
               beep('kill');
               if(en.type==='boss') bossDefeated = true;
             }
@@ -615,8 +644,8 @@
           
           if(en.hp <= 0){
             en.dead = true;
-            score += en.type==='boss' ? 600 : 35;
-            spawnParticles(en.x, en.y, en.color, en.type==='boss'?60:20);
+            score += en.type==='boss' ? 1000 : 35;
+            spawnParticles(en.x, en.y, en.color, en.type==='boss'?80:20);
             beep('kill');
             if(en.type==='boss') bossDefeated = true;
           }
@@ -633,33 +662,35 @@
       
       const dx = player.x-en.x, dy = player.y-en.y;
       const d = Math.hypot(dx,dy)||1;
-      const homing = en.type==='hunter' ? 340 : (en.type==='boss' ? 140 : 220);
+      const homing = en.type==='hunter' ? 340 : (en.type==='boss' ? 150 : 220);
       en.vx += (dx/d)*homing*dt;
       en.vy += (dy/d)*homing*dt;
 
-      // 👹 거대 보스 특수 탄막 패턴
+      // 👹 보스 광란 탄막 공격
       if(en.type==='boss'){
         en.shootCd -= dt;
         if(en.shootCd <= 0){
-          en.shootCd = rand(1.2, 2.2);
+          en.shootCd = stageCfg.bossAttackRate;
           
-          // 방사형 탄막 폭풍
-          const bCount = 18;
+          // 촘촘해진 방사 탄막 폭풍 (스테이지가 올라갈수록 탄수 증가)
+          const bCount = Math.min(28, 16 + Math.floor(stageNum * 0.8));
+          const bulletSpd = 210 + Math.min(180, stageNum * 4);
+
           for(let b=0; b<bCount; b++){
             const bAng = (b/bCount)*Math.PI*2 + en.spin;
             enemyBullets.push({
               x: en.x, y: en.y,
-              vx: Math.cos(bAng)*200, vy: Math.sin(bAng)*200,
+              vx: Math.cos(bAng)*bulletSpd, vy: Math.sin(bAng)*bulletSpd,
               r: 7, color: '#FF0055'
             });
           }
           
-          // 조준 원거리 탄막
+          // 플레이어 저격 탄막 (3구 발사)
           const aimAng = Math.atan2(player.y - en.y, player.x - en.x);
-          for(let off of [-0.2, 0, 0.2]){
+          for(let off of [-0.22, 0, 0.22]){
             enemyBullets.push({
               x: en.x, y: en.y,
-              vx: Math.cos(aimAng + off)*320, vy: Math.sin(aimAng + off)*320,
+              vx: Math.cos(aimAng + off)*(bulletSpd + 120), vy: Math.sin(aimAng + off)*(bulletSpd + 120),
               r: 9, color: '#FFD25E'
             });
           }
@@ -676,8 +707,7 @@
       if(en.y > H-en.r){ en.y=H-en.r; en.vy*=-1; }
 
       if(player.inv<=0 && Math.hypot(en.x-player.x,en.y-player.y) < en.r+player.r*0.85){
-        lives--; player.inv = 1400; beep('hurt');
-        document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake');
+        lives--; player.inv = 1400; beep('hurt'); triggerShake();
         const ang = Math.atan2(player.y-en.y, player.x-en.x);
         player.vx += Math.cos(ang)*350; player.vy += Math.sin(ang)*350;
         spawnParticles(player.x,player.y,'#FF5EC8',16);
@@ -689,8 +719,7 @@
     for(const b of enemyBullets){
       b.x += b.vx*dt; b.y += b.vy*dt;
       if(player.inv<=0 && Math.hypot(b.x-player.x, b.y-player.y) < b.r + player.r*0.8){
-        lives--; player.inv = 1400; b.dead = true; beep('hurt');
-        document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake');
+        lives--; player.inv = 1400; b.dead = true; beep('hurt'); triggerShake();
         spawnParticles(player.x,player.y,'#FF5EC8',14);
         if(lives<=0){ triggerGameOver(); return; }
       }
@@ -738,7 +767,6 @@
     ctx.lineWidth = 3;
 
     if(en.type==='boss'){
-      // 👹 거대화된 영주급 보스 렌더링
       ctx.rotate(en.spin*0.3);
       
       // Outer Rotating Spikes Ring
@@ -781,12 +809,12 @@
     }
     ctx.restore();
 
-    if(en.hp < en.maxHp){
-      const bw = en.r*2.2, bh=7;
+    if(en.hp < en.maxHp && en.type!=='boss'){
+      const bw = en.r*2.2, bh=6;
       ctx.save();
-      ctx.translate(en.x-bw/2, en.y-en.r-16);
+      ctx.translate(en.x-bw/2, en.y-en.r-14);
       ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.fillRect(0,0,bw,bh);
-      ctx.fillStyle= en.type==='boss' ? '#FF2D3D' : '#00E5FF'; 
+      ctx.fillStyle='#00E5FF'; 
       ctx.fillRect(0,0,bw*(Math.max(0,en.hp)/en.maxHp),bh);
       ctx.restore();
     }
@@ -869,7 +897,8 @@
   // ---------------- HUD ----------------
   const stageLabelEl = document.getElementById('stageLabel');
   const livesEl = document.getElementById('lives');
-  const progressBarEl = document.getElementById('progressBar');
+  const bossBarEl = document.getElementById('bossBar');
+  const bossTitleEl = document.getElementById('bossTitle');
   const scoreEl = document.getElementById('score');
   const grenadeBarEl = document.getElementById('grenadeBar');
 
@@ -887,8 +916,14 @@
     grenadeBarEl.style.width = (gRatio * 100) + '%';
 
     const boss = enemies.find(e=>e.type==='boss');
-    const ratio = boss ? boss.hp/boss.maxHp : 0;
-    progressBarEl.style.width = (ratio*100)+'%';
+    if(boss){
+      const ratio = Math.max(0, boss.hp / boss.maxHp);
+      bossBarEl.style.width = (ratio * 100) + '%';
+      bossTitleEl.textContent = `BOSS HP [${Math.ceil(boss.hp)} / ${boss.maxHp}]`;
+    } else {
+      bossBarEl.style.width = '0%';
+      bossTitleEl.textContent = 'BOSS DEFEATED';
+    }
   }
 
   // ---------------- Card Selection System ----------------
@@ -896,8 +931,6 @@
 
   function renderCardSelection(){
     cardContainer.innerHTML = '';
-    
-    // 무작위 3장 카운트 셔플
     const shuffled = [...CARD_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
     
     shuffled.forEach(cardData => {
