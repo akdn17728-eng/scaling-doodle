@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>광란의 우주 - 우주게 대모험 (풀오토 하드코어)</title>
+<title>광란의 우주 - 우주게 대모험 (보스 전멸전 & 스테이지 체력 리셋)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
@@ -11,13 +11,13 @@
   html,body{ background:var(--void); height:100%; overflow:hidden; font-family:'Orbitron',sans-serif; }
   #game{ position:fixed; inset:0; display:block; }
 
-  body.shake{ animation: shake 0.2s linear; }
+  body.shake{ animation: shake 0.25s linear; }
   @keyframes shake{
     0%,100%{ transform:translate(0,0); }
-    20%{ transform:translate(-8px,6px); }
-    40%{ transform:translate(8px,-6px); }
-    60%{ transform:translate(-6px,-4px); }
-    80%{ transform:translate(6px,4px); }
+    20%{ transform:translate(-10px,8px); }
+    40%{ transform:translate(10px,-8px); }
+    60%{ transform:translate(-8px,-5px); }
+    80%{ transform:translate(8px,5px); }
   }
 
   /* ---------- HUD ---------- */
@@ -42,6 +42,17 @@
   }
   #progressBar{ height:100%; width:0%; background:linear-gradient(90deg,#5EE7FF,#FF2D70); transition:width 0.25s ease; }
   #score{ font-size:13px; color:#FFD25E; text-shadow:0 0 8px rgba(255,210,80,0.7); }
+  
+  /* 수류탄 쿨타임 게이지 HUD */
+  #grenadeHud{
+    display:flex; align-items:center; gap:6px; font-size:11px; color:#FF9900; font-weight:700;
+  }
+  #grenadeBarWrap{
+    width:50px; height:8px; border-radius:4px; background:rgba(255,255,255,0.1);
+    border:1px solid #FF9900; overflow:hidden;
+  }
+  #grenadeBar{ height:100%; width:100%; background:#FF9900; }
+
   #muteBtn{
     pointer-events:auto; cursor:pointer; background:rgba(10,4,24,0.5);
     border:1px solid rgba(94,231,255,0.5); color:#EAFFFC; border-radius:8px;
@@ -108,6 +119,7 @@
   <div class="hud-block" id="stageLabel">STAGE 1 / 100</div>
   <div class="hud-block" id="lives"></div>
   <div id="progressWrap"><div id="progressBar"></div></div>
+  <div id="grenadeHud">💣 <div id="grenadeBarWrap"><div id="grenadeBar"></div></div></div>
   <div class="hud-block" id="score">SCORE 0</div>
   <button id="muteBtn">🔊 소리</button>
 </div>
@@ -118,31 +130,32 @@
 </div>
 
 <div class="overlay" id="screenTitle">
-  <h1>광란의 우주 : 풀오토 바주카</h1>
-  <p class="sub">우주게 대모험 · HARDCORE 100 STAGE</p>
-  <p>자동으로 연속 발사되는 <b style="color:#5EE7FF">플라즈마 기관총</b> 탑재!<br>
-  위급할 땐 <b style="color:#FF5EC8">스페이스바(근접 참격)</b>로 탄환을 지우고 적을 밀어내세요.<br>
-  적들의 내구도가 대폭 강화되어 여러 번 사격해야 파괴할 수 있습니다!</p>
-  <button class="neon-btn" id="startBtn">출격하기</button>
+  <h1>광란의 우주 : 보스 대혼란</h1>
+  <p class="sub">우주게 대모험 · ALL-STAGE BOSS WAR</p>
+  <p>🔥 <b>매 스테이지 보스 전원 등장!</b><br>
+  ❤️ <b>매 스테이지 시작 시 체력 풀충전!</b><br>
+  💣 <b>5초마다 자동 발사되는 수류탄 궁극기</b><br>
+  ⌨️ <b>[Enter] 키</b>로 다음 스테이지에 빠르게 진입할 수 있습니다.</p>
+  <button class="neon-btn" id="startBtn">출격하기 (Enter)</button>
 </div>
 
 <div class="overlay hidden" id="screenClear">
   <h1 id="clearTitle">STAGE CLEAR!</h1>
   <p class="sub" id="clearScore"></p>
-  <button class="neon-btn" id="nextBtn">다음 스테이지</button>
+  <button class="neon-btn" id="nextBtn">다음 스테이지 (Enter)</button>
 </div>
 
 <div class="overlay hidden" id="screenGameOver">
   <h1 style="color:#FF5EC8">MISSION FAILED</h1>
   <p class="sub" id="overStats"></p>
-  <button class="neon-btn pink" id="retryBtn">처음부터 다시</button>
+  <button class="neon-btn pink" id="retryBtn">처음부터 다시 (Enter)</button>
 </div>
 
 <div class="overlay hidden" id="screenWin">
   <h1 style="color:#FFD25E">🏆 전설의 은하 지배자 🏆</h1>
   <p class="sub" id="winScore"></p>
-  <p>모든 시련을 이겨내고 우주의 평화를 되찾았습니다!</p>
-  <button class="neon-btn" id="winRetryBtn">다시 도전하기</button>
+  <p>모든 스테이지의 보스를 물리치고 최고에 올라섰습니다!</p>
+  <button class="neon-btn" id="winRetryBtn">다시 도전하기 (Enter)</button>
 </div>
 
 <div class="overlay hidden" id="screenPause">
@@ -170,6 +183,7 @@
     let freq=440, dur=0.12, wave='sine';
     if(type==='eat'){ freq=750; dur=0.08; wave='triangle'; }
     else if(type==='shoot'){ freq=880; dur=0.04; wave='square'; }
+    else if(type==='grenade'){ freq=150; dur=0.4; wave='sawtooth'; }
     else if(type==='attack'){ freq=320; dur=0.12; wave='sawtooth'; }
     else if(type==='kill'){ freq=600; dur=0.18; wave='square'; }
     else if(type==='hurt'){ freq=120; dur=0.3; wave='sawtooth'; }
@@ -177,6 +191,7 @@
     else if(type==='over'){ freq=90; dur=0.7; wave='sawtooth'; }
     o.type = wave; o.frequency.setValueAtTime(freq, now);
     if(type==='shoot'){ o.frequency.exponentialRampToValueAtTime(300, now+dur); }
+    if(type==='grenade'){ o.frequency.exponentialRampToValueAtTime(40, now+dur); }
     if(type==='attack'){ o.frequency.exponentialRampToValueAtTime(120, now+dur); }
     if(type==='clear'){ o.frequency.exponentialRampToValueAtTime(freq*1.8, now+dur); }
     g.gain.setValueAtTime(0.0001, now);
@@ -186,38 +201,38 @@
   }
 
   // ---------------- Palettes ----------------
-  const planetColors = ['#FF5EC8','#5EE7FF','#FFD25E','#7CE07C','#FF7A9C','#B58CFF'];
   const NORMAL_ENEMY = { asteroid:'#00E5FF', scout:'#FF00A0', hunter:'#FF3300', bullet:'#FFD25E' };
   const BOSS_COLOR = '#A000FF';
 
   // ---------------- Game State ----------------
   let stageNum = 1;
-  let lives = 5;
-  const MAX_LIVES = 7;
+  const DEFAULT_LIVES = 5;
+  let lives = DEFAULT_LIVES;
   let score = 0;
   let running = false;
   let paused = false;
   let stageCleared = false;
-  let planetsEaten = 0;
   let bossDefeated = false;
   let stageCfg = null;
 
   const player = { 
     x:0,y:0,r:28,vx:0,vy:0, faceX:1, faceY:0, inv:0, 
     clawTimer:0, clawCd:0, clawAngle:0,
-    autoShootCd: 0 // 자동 사격 쿨타임
+    autoShootCd: 0,
+    grenadeTimer: 0 
   };
 
-  let planets = [];
   let enemies = [];
-  let playerBullets = []; // 플레이어 총탄
+  let playerBullets = []; 
   let enemyBullets = [];
+  let grenades = [];     
   let particles = [];
   let shockwaves = [];
 
   const CLAW_DURATION = 0.22, CLAW_COOLDOWN = 0.35;
   const ACCEL = 2200, MAXSPEED = 380, FRICTION = 6.5;
-  const AUTO_SHOOT_INTERVAL = 0.12; // 자동 연사 속도 (0.12초마다 발사)
+  const AUTO_SHOOT_INTERVAL = 0.12; 
+  const GRENADE_INTERVAL = 5.0; 
 
   // ---------------- Input ----------------
   const keys = {};
@@ -229,6 +244,18 @@
     keys[e.code] = true;
     if(e.code==='Space'){ triggerClaw(); e.preventDefault(); }
     if(e.code==='KeyP' || e.code==='Escape'){ togglePause(); }
+    
+    if(e.code==='Enter'){
+      if(!screenTitle.classList.contains('hidden')){
+        document.getElementById('startBtn').click();
+      } else if(!screenClear.classList.contains('hidden')){
+        document.getElementById('nextBtn').click();
+      } else if(!screenGameOver.classList.contains('hidden')){
+        document.getElementById('retryBtn').click();
+      } else if(!screenWin.classList.contains('hidden')){
+        document.getElementById('winRetryBtn').click();
+      }
+    }
   });
   window.addEventListener('keyup', (e)=>{ keys[e.code]=false; });
 
@@ -303,35 +330,16 @@
   buildStars();
   window.addEventListener('resize', buildStars);
 
-  // ---------------- Stage Generation (적 HP 상향) ----------------
+  // ---------------- Stage Generation ----------------
   function genStage(n){
-    const isBoss = n % 10 === 0;
-    const planetsNeeded = isBoss ? 4 : Math.min(22, 5 + Math.floor(n/4));
-    const enemyCount = isBoss ? 0 : Math.min(26, 5 + Math.floor(n*0.5));
-    const speedBase = 110 + Math.min(220, n*2.0);
-    // 보스 HP 대폭 상향
-    const bossHp = 40 + Math.floor(n/10)*25;
-    const scoutUnlocked = n>=2;
-    const hunterUnlocked = n>=8;
-    return {isBoss, planetsNeeded, enemyCount, speedBase, bossHp, scoutUnlocked, hunterUnlocked, n};
+    const multiplier = 1.0 + (n - 1) * 0.05;
+    const enemyCount = Math.min(20, 3 + Math.floor(n * 0.4));
+    const speedBase = (100 + Math.min(200, n * 2.5)) * Math.min(2.0, multiplier);
+    const bossHp = Math.floor((35 + n * 12) * multiplier);
+    return { enemyCount, speedBase, bossHp, multiplier, n };
   }
 
   function rand(a,b){ return a + Math.random()*(b-a); }
-
-  function spawnPlanets(cfg){
-    planets = [];
-    let tries=0;
-    while(planets.length < cfg.planetsNeeded && tries < 500){
-      tries++;
-      const x = rand(60, W-60), y = rand(HUD_H+60, H-60);
-      if(Math.hypot(x-player.x,y-player.y) < 140) continue;
-      let ok = true;
-      for(const p of planets){ if(Math.hypot(x-p.x,y-p.y) < 65){ ok=false; break; } }
-      if(!ok) continue;
-      planets.push({ x,y, r: rand(16,26), color: planetColors[Math.floor(Math.random()*planetColors.length)],
-        eaten:false, bob: Math.random()*Math.PI*2 });
-    }
-  }
 
   function spawnEnemy(type, cfg, boss){
     const edge = Math.floor(Math.random()*4);
@@ -343,16 +351,29 @@
     const ang = Math.atan2((player.y||H/2)-y, (player.x||W/2)-x) + rand(-0.5,0.5);
     let speed, r, hp, color;
     
-    // 🔥 적들의 체력(HP) 대폭 상향! (여러 번 사격해야 파괴 가능)
-    if(boss){ speed = cfg.speedBase*0.45; r = 70; hp = cfg.bossHp; color = BOSS_COLOR; }
-    else if(type==='hunter'){ speed = cfg.speedBase*1.15; r = 24; hp = 22 + Math.floor(cfg.n*0.5); color = NORMAL_ENEMY.hunter; }
-    else if(type==='scout'){ speed = cfg.speedBase*0.9; r = 20; hp = 12 + Math.floor(cfg.n*0.3); color = NORMAL_ENEMY.scout; }
-    else { speed = cfg.speedBase*0.65; r = 22; hp = 6 + Math.floor(cfg.n*0.2); color = NORMAL_ENEMY.asteroid; }
+    if(boss){
+      speed = cfg.speedBase * 0.4;
+      r = 65;
+      hp = cfg.bossHp;
+      color = BOSS_COLOR;
+    } else if(type==='hunter'){
+      speed = cfg.speedBase * 1.1; r = 24;
+      hp = Math.floor((15 + cfg.n * 0.5) * cfg.multiplier);
+      color = NORMAL_ENEMY.hunter;
+    } else if(type==='scout'){
+      speed = cfg.speedBase * 0.85; r = 20;
+      hp = Math.floor((8 + cfg.n * 0.3) * cfg.multiplier);
+      color = NORMAL_ENEMY.scout;
+    } else {
+      speed = cfg.speedBase * 0.6; r = 22;
+      hp = Math.floor((4 + cfg.n * 0.2) * cfg.multiplier);
+      color = NORMAL_ENEMY.asteroid;
+    }
     
     enemies.push({
       x,y, vx: Math.cos(ang)*speed, vy: Math.sin(ang)*speed, r, hp, maxHp:hp,
       type: boss?'boss':type, speed, color, dead:false, flash:0, spin: Math.random()*Math.PI*2,
-      shootCd: rand(1.0, 2.5)
+      shootCd: rand(1.0, 2.5) / Math.min(2.0, cfg.multiplier)
     });
   }
 
@@ -360,35 +381,38 @@
     enemies = [];
     enemyBullets = [];
     playerBullets = [];
-    if(cfg.isBoss){
-      spawnEnemy(null, cfg, true);
-    } else {
-      for(let i=0;i<cfg.enemyCount;i++){
-        let type = 'asteroid';
-        const r = Math.random();
-        if(cfg.hunterUnlocked && r < 0.35) type = 'hunter';
-        else if(cfg.scoutUnlocked && r < 0.70) type = 'scout';
-        spawnEnemy(type, cfg, false);
-      }
+    grenades = [];
+
+    spawnEnemy(null, cfg, true);
+
+    for(let i=0; i<cfg.enemyCount; i++){
+      let type = 'asteroid';
+      const r = Math.random();
+      if(cfg.n >= 5 && r < 0.35) type = 'hunter';
+      else if(cfg.n >= 2 && r < 0.70) type = 'scout';
+      spawnEnemy(type, cfg, false);
     }
   }
 
   function startStage(n){
     stageNum = n;
     stageCfg = genStage(n);
-    planetsEaten = 0;
     bossDefeated = false;
     stageCleared = false;
+    
+    // ❤️ 매 스테이지 시작 시 플레이어 체력 완전 복구
+    lives = DEFAULT_LIVES;
+
     player.x = W/2; player.y = H/2 + 40;
     player.vx=0; player.vy=0; player.inv=1200;
-    spawnPlanets(stageCfg);
+    player.grenadeTimer = GRENADE_INTERVAL; 
     spawnStageEntities(stageCfg);
     particles = [];
     shockwaves = [];
     updateHUDStatic();
   }
 
-  // ---------------- Player Auto-Shoot & Claw ----------------
+  // ---------------- Player Weapon Systems ----------------
   function autoShoot(dt){
     player.autoShootCd -= dt;
     if(player.autoShootCd <= 0){
@@ -396,21 +420,37 @@
       const faceAng = Math.atan2(player.faceY, player.faceX);
       const bSpeed = 750;
       
-      // 양쪽 게집게 근처에서 탄환 2발 자동 발사
       for(const side of [-1, 1]){
         const offX = Math.cos(faceAng)*player.r + Math.cos(faceAng + side*1.2)*16;
         const offY = Math.sin(faceAng)*player.r + Math.sin(faceAng + side*1.2)*16;
         playerBullets.push({
-          x: player.x + offX,
-          y: player.y + offY,
-          vx: Math.cos(faceAng)*bSpeed,
-          vy: Math.sin(faceAng)*bSpeed,
-          r: 4,
-          life: 1.2
+          x: player.x + offX, y: player.y + offY,
+          vx: Math.cos(faceAng)*bSpeed, vy: Math.sin(faceAng)*bSpeed,
+          r: 4, life: 1.2
         });
       }
       beep('shoot');
     }
+
+    player.grenadeTimer += dt;
+    if(player.grenadeTimer >= GRENADE_INTERVAL){
+      player.grenadeTimer = 0;
+      launchGrenade();
+    }
+  }
+
+  function launchGrenade(){
+    const faceAng = Math.atan2(player.faceY, player.faceX);
+    const targetDist = 220;
+    grenades.push({
+      x: player.x, y: player.y,
+      startX: player.x, startY: player.y,
+      targetX: Math.max(40, Math.min(W-40, player.x + Math.cos(faceAng)*targetDist)),
+      targetY: Math.max(HUD_H+40, Math.min(H-40, player.y + Math.sin(faceAng)*targetDist)),
+      progress: 0,
+      r: 10
+    });
+    beep('grenade');
   }
 
   function normAngle(a){ while(a>Math.PI) a-=Math.PI*2; while(a<-Math.PI) a+=Math.PI*2; return a; }
@@ -425,13 +465,10 @@
     beep('attack');
 
     shockwaves.push({
-      x: player.x + Math.cos(faceAng)*30,
-      y: player.y + Math.sin(faceAng)*30,
-      ang: faceAng,
-      r: 30, maxR: 130, alpha: 1
+      x: player.x + Math.cos(faceAng)*30, y: player.y + Math.sin(faceAng)*30,
+      ang: faceAng, r: 30, maxR: 130, alpha: 1
     });
 
-    // 강력한 근접 참격 (큰 데미지 + 강력한 넉백)
     const range = player.r + 100;
     for(const en of enemies){
       if(en.dead) continue;
@@ -441,9 +478,9 @@
         const ang = Math.atan2(dy,dx);
         const diff = Math.abs(normAngle(ang-faceAng));
         if(diff < Math.PI*0.72){
-          en.hp -= 8; // 강력한 근접 데미지
+          en.hp -= 15;
           en.flash = 0.25;
-          const push = 300;
+          const push = 350;
           en.vx += Math.cos(ang)*push; en.vy += Math.sin(ang)*push;
           spawnParticles(en.x, en.y, '#5EE7FF', 12);
 
@@ -463,8 +500,8 @@
   function spawnParticles(x,y,color,count){
     for(let i=0;i<count;i++){
       const ang = Math.random()*Math.PI*2;
-      const spd = rand(80,340);
-      particles.push({ x,y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd, life:0, maxLife: rand(0.3,0.65), color, r: rand(2,5) });
+      const spd = rand(80,380);
+      particles.push({ x,y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd, life:0, maxLife: rand(0.3,0.7), color, r: rand(2,6) });
     }
   }
 
@@ -473,7 +510,6 @@
   function update(dt){
     if(!running || paused || stageCleared) return;
 
-    // 이동
     const iv = inputVector();
     player.vx += iv.x*ACCEL*dt;
     player.vy += iv.y*ACCEL*dt;
@@ -491,30 +527,61 @@
     if(player.clawTimer>0) player.clawTimer -= dt;
     if(player.clawCd>0) player.clawCd -= dt;
 
-    // 자동 사격 처리
     autoShoot(dt);
 
-    // 충격파
+    for(const g of grenades){
+      g.progress += dt * 2.2;
+      g.x = g.startX + (g.targetX - g.startX)*g.progress;
+      g.y = g.startY + (g.targetY - g.startY)*g.progress;
+
+      if(g.progress >= 1.0){
+        g.exploded = true;
+        document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake');
+        spawnParticles(g.x, g.y, '#FF9900', 40);
+        spawnParticles(g.x, g.y, '#FF2D3D', 25);
+        beep('grenade');
+
+        const blastRadius = 140;
+        for(const en of enemies){
+          if(en.dead) continue;
+          const dist = Math.hypot(en.x - g.x, en.y - g.y);
+          if(dist < blastRadius + en.r){
+            en.hp -= 25;
+            en.flash = 0.3;
+            const ang = Math.atan2(en.y - g.y, en.x - g.x);
+            en.vx += Math.cos(ang)*400; en.vy += Math.sin(ang)*400;
+
+            if(en.hp <= 0){
+              en.dead = true;
+              score += en.type==='boss' ? 500 : 35;
+              spawnParticles(en.x, en.y, en.color, en.type==='boss'?50:20);
+              beep('kill');
+              if(en.type==='boss') bossDefeated = true;
+            }
+          }
+        }
+      }
+    }
+    grenades = grenades.filter(g => !g.exploded);
+
     for(const sw of shockwaves){
       sw.r += dt*400;
       sw.alpha -= dt*3.2;
     }
     shockwaves = shockwaves.filter(sw=>sw.alpha>0);
 
-    // 플레이어 총탄 업데이트 및 충돌 검사
     for(const pb of playerBullets){
       pb.x += pb.vx*dt;
       pb.y += pb.vy*dt;
       pb.life -= dt;
 
-      // 적과 레이저 충돌
       for(const en of enemies){
         if(en.dead) continue;
         if(Math.hypot(pb.x-en.x, pb.y-en.y) < pb.r + en.r){
           pb.dead = true;
-          en.hp -= 1; // 탄환 당 1 데미지
-          en.flash = 0.1;
-          spawnParticles(pb.x, pb.y, '#5EE7FF', 3);
+          en.hp -= 1; 
+          en.flash = 0.08;
+          spawnParticles(pb.x, pb.y, '#5EE7FF', 2);
           
           if(en.hp <= 0){
             en.dead = true;
@@ -529,42 +596,28 @@
     }
     playerBullets = playerBullets.filter(pb => !pb.dead && pb.life > 0 && pb.x>=0 && pb.x<=W && pb.y>=HUD_H && pb.y<=H);
 
-    // 행성
-    for(const p of planets){
-      if(p.eaten) continue;
-      p.bob += dt*2.5;
-      if(Math.hypot(p.x-player.x, p.y-player.y) < p.r + player.r*0.75){
-        p.eaten = true;
-        planetsEaten++;
-        score += 15;
-        spawnParticles(p.x,p.y,p.color,16);
-        beep('eat');
-      }
-    }
-
-    // 적 업데이트 및 행동
     for(const en of enemies){
       if(en.dead) continue;
       if(en.flash>0) en.flash -= dt;
       en.spin += dt*3;
-      if(en.type==='scout' || en.type==='hunter' || en.type==='boss'){
-        const dx = player.x-en.x, dy = player.y-en.y;
-        const d = Math.hypot(dx,dy)||1;
-        const homing = en.type==='hunter' ? 320 : (en.type==='boss' ? 180 : 220);
-        en.vx += (dx/d)*homing*dt;
-        en.vy += (dy/d)*homing*dt;
-      }
+      
+      const dx = player.x-en.x, dy = player.y-en.y;
+      const d = Math.hypot(dx,dy)||1;
+      const homing = en.type==='hunter' ? 320 : (en.type==='boss' ? 180 : 220);
+      en.vx += (dx/d)*homing*dt;
+      en.vy += (dy/d)*homing*dt;
 
       if(en.type==='boss'){
         en.shootCd -= dt;
         if(en.shootCd <= 0){
-          en.shootCd = rand(1.2, 2.2);
-          const bulletsCount = 10;
+          en.shootCd = rand(1.0, 2.0) / Math.min(2.0, stageCfg.multiplier);
+          const bulletsCount = Math.min(16, 8 + Math.floor(stageCfg.n * 0.15));
           for(let b=0; b<bulletsCount; b++){
             const bAng = (b/bulletsCount)*Math.PI*2 + en.spin;
             enemyBullets.push({
               x: en.x, y: en.y,
-              vx: Math.cos(bAng)*190, vy: Math.sin(bAng)*190,
+              vx: Math.cos(bAng)*(180 * Math.min(1.8, stageCfg.multiplier)),
+              vy: Math.sin(bAng)*(180 * Math.min(1.8, stageCfg.multiplier)),
               r: 6, color: NORMAL_ENEMY.bullet
             });
           }
@@ -580,7 +633,6 @@
       if(en.y < HUD_H+en.r){ en.y=HUD_H+en.r; en.vy*=-1; }
       if(en.y > H-en.r){ en.y=H-en.r; en.vy*=-1; }
 
-      // 플레이어와 적 충돌
       if(player.inv<=0 && Math.hypot(en.x-player.x,en.y-player.y) < en.r+player.r*0.85){
         lives--;
         player.inv = 1400;
@@ -594,7 +646,6 @@
     }
     enemies = enemies.filter(e=>!e.dead);
 
-    // 적 총탄
     for(const b of enemyBullets){
       b.x += b.vx*dt;
       b.y += b.vy*dt;
@@ -610,15 +661,13 @@
     }
     enemyBullets = enemyBullets.filter(b=> !b.dead && b.x>=0 && b.x<=W && b.y>=HUD_H && b.y<=H);
 
-    // 파티클
     for(const p of particles){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.life+=dt; p.vx*=0.93; p.vy*=0.93; }
     particles = particles.filter(p=>p.life<p.maxLife);
 
     updateHUDDynamic();
 
-    if(!stageCleared){
-      if(stageCfg.isBoss){ if(bossDefeated) triggerStageClear(); }
-      else { if(planetsEaten >= stageCfg.planetsNeeded) triggerStageClear(); }
+    if(!stageCleared && bossDefeated){
+      triggerStageClear();
     }
   }
 
@@ -635,22 +684,19 @@
     }
   }
 
-  function drawPlanet(p){
-    if(p.eaten) return;
-    const yy = p.y + Math.sin(p.bob)*4;
-    ctx.save();
-    const grad = ctx.createRadialGradient(p.x-p.r*0.3,yy-p.r*0.3,2, p.x,yy,p.r);
-    grad.addColorStop(0,'#ffffff');
-    grad.addColorStop(0.35,p.color);
-    grad.addColorStop(1,'#160d24');
-    ctx.beginPath();
-    ctx.fillStyle = grad;
-    ctx.shadowColor = p.color; ctx.shadowBlur = 18;
-    ctx.arc(p.x,yy,p.r,0,Math.PI*2); ctx.fill();
-    ctx.restore();
+  function drawGrenades(){
+    for(const g of grenades){
+      ctx.save();
+      ctx.beginPath();
+      ctx.fillStyle = '#FF9900';
+      ctx.shadowColor = '#FF2D3D';
+      ctx.shadowBlur = 15;
+      ctx.arc(g.x, g.y, g.r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
-  // 🔥 멋지게 새로 디자인된 일반 적 및 보스 그래픽
   function drawEnemy(en){
     ctx.save();
     ctx.translate(en.x,en.y);
@@ -664,7 +710,6 @@
     ctx.lineWidth = 2.5;
 
     if(en.type==='asteroid'){
-      // [사이버 암석] 크리스탈 코어를 가진 강화 운석
       ctx.rotate(en.spin);
       ctx.beginPath();
       for(let i=0; i<6; i++){
@@ -674,63 +719,37 @@
         if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
       }
       ctx.closePath(); ctx.fill(); ctx.stroke();
-      
-      // 내부에 빛나는 크리스탈 코어
-      ctx.beginPath();
-      ctx.fillStyle = isFlashing ? '#FFFFFF' : en.color;
+      ctx.beginPath(); ctx.fillStyle = isFlashing ? '#FFFFFF' : en.color;
       ctx.arc(0,0,en.r*0.35,0,Math.PI*2); ctx.fill();
 
     } else if(en.type==='scout'){
-      // [네온 정찰기] 날렵한 SF 제트기 형상
       ctx.rotate(moveAng);
       ctx.beginPath();
-      ctx.moveTo(en.r*1.2, 0);
-      ctx.lineTo(-en.r*0.8, -en.r*0.8);
-      ctx.lineTo(-en.r*0.3, 0);
-      ctx.lineTo(-en.r*0.8, en.r*0.8);
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
-
-      // 전방 서치라이트 및 날개 발광선
-      ctx.beginPath();
-      ctx.fillStyle = isFlashing ? '#FFFFFF' : '#FFD25E';
-      ctx.arc(en.r*0.4, 0, en.r*0.25, 0, Math.PI*2); ctx.fill();
+      ctx.moveTo(en.r*1.2, 0); ctx.lineTo(-en.r*0.8, -en.r*0.8);
+      ctx.lineTo(-en.r*0.3, 0); ctx.lineTo(-en.r*0.8, en.r*0.8);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
 
     } else if(en.type==='hunter'){
-      // [듀얼 나이프 추적자] 맹렬한 위협형 크루저
       ctx.rotate(moveAng);
       ctx.beginPath();
-      ctx.moveTo(en.r*1.3, 0);
-      ctx.lineTo(en.r*0.3, -en.r*0.9);
-      ctx.lineTo(-en.r*0.9, -en.r*0.5);
-      ctx.lineTo(-en.r*0.4, 0);
-      ctx.lineTo(-en.r*0.9, en.r*0.5);
-      ctx.lineTo(en.r*0.3, en.r*0.9);
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
-
-      // 중앙 고출력 엔진
-      ctx.beginPath();
-      ctx.fillStyle = isFlashing ? '#FFFFFF' : '#FF0055';
-      ctx.arc(-en.r*0.2, 0, en.r*0.3, 0, Math.PI*2); ctx.fill();
+      ctx.moveTo(en.r*1.3, 0); ctx.lineTo(en.r*0.3, -en.r*0.9);
+      ctx.lineTo(-en.r*0.9, -en.r*0.5); ctx.lineTo(-en.r*0.4, 0);
+      ctx.lineTo(-en.r*0.9, en.r*0.5); ctx.lineTo(en.r*0.3, en.r*0.9);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
 
     } else if(en.type==='boss'){
-      // [거대 보스 코어]
       ctx.rotate(en.spin*0.5);
       ctx.beginPath(); ctx.arc(0,0,en.r,0,Math.PI*2); ctx.fill(); ctx.stroke();
-      
-      // 보스 붉은 눈빛
       ctx.beginPath(); ctx.fillStyle = isFlashing?'#FFFFFF':'#FF0055';
       ctx.arc(-en.r*0.35,-en.r*0.2,en.r*0.2,0,Math.PI*2);
       ctx.arc(en.r*0.35,-en.r*0.2,en.r*0.2,0,Math.PI*2); ctx.fill();
     }
     ctx.restore();
 
-    // 체력바 표시 (보스 및 상향된 일반 적들)
     if(en.hp < en.maxHp){
-      const bw = en.r*2, bh=5;
+      const bw = en.r*2.2, bh=6;
       ctx.save();
-      ctx.translate(en.x-bw/2, en.y-en.r-12);
+      ctx.translate(en.x-bw/2, en.y-en.r-14);
       ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.fillRect(0,0,bw,bh);
       ctx.fillStyle= en.type==='boss' ? '#FF2D3D' : '#00E5FF'; 
       ctx.fillRect(0,0,bw*(Math.max(0,en.hp)/en.maxHp),bh);
@@ -743,10 +762,8 @@
       ctx.save();
       ctx.beginPath();
       ctx.fillStyle = '#5EE7FF';
-      ctx.shadowColor = '#5EE7FF';
-      ctx.shadowBlur = 10;
-      ctx.arc(pb.x, pb.y, pb.r, 0, Math.PI*2);
-      ctx.fill();
+      ctx.shadowColor = '#5EE7FF'; ctx.shadowBlur = 10;
+      ctx.arc(pb.x, pb.y, pb.r, 0, Math.PI*2); ctx.fill();
       ctx.restore();
     }
   }
@@ -756,10 +773,8 @@
       ctx.save();
       ctx.beginPath();
       ctx.fillStyle = b.color;
-      ctx.shadowColor = b.color;
-      ctx.shadowBlur = 10;
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
-      ctx.fill();
+      ctx.shadowColor = b.color; ctx.shadowBlur = 10;
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
       ctx.restore();
     }
   }
@@ -772,7 +787,6 @@
 
     const faceAng = Math.atan2(p.faceY,p.faceX);
 
-    // 플라즈마 참격파 이펙트
     for(const sw of shockwaves){
       ctx.save();
       ctx.translate(sw.x - p.x, sw.y - p.y);
@@ -780,22 +794,18 @@
       ctx.beginPath();
       ctx.strokeStyle = `rgba(94, 231, 255, ${sw.alpha})`;
       ctx.fillStyle = `rgba(255, 94, 200, ${sw.alpha * 0.35})`;
-      ctx.lineWidth = 5;
-      ctx.shadowColor = '#5EE7FF';
-      ctx.shadowBlur = 20;
+      ctx.lineWidth = 5; ctx.shadowColor = '#5EE7FF'; ctx.shadowBlur = 20;
       ctx.arc(0, 0, sw.r, -0.7, 0.7);
       ctx.stroke(); ctx.fill();
       ctx.restore();
     }
 
-    // 게 본체
     const grad = ctx.createRadialGradient(-6,-8,3,0,0,p.r);
     grad.addColorStop(0,'#8E44AD'); grad.addColorStop(0.6,'#2C3E50'); grad.addColorStop(1,'#0F172A');
     ctx.beginPath(); ctx.fillStyle = grad;
     ctx.ellipse(0,0,p.r,p.r*0.75,0,0,Math.PI*2); ctx.fill();
     ctx.strokeStyle = '#00F0FF'; ctx.lineWidth = 2.5; ctx.stroke();
 
-    // 눈빛
     for(const s of [-1,1]){
       const ex = Math.cos(faceAng)*p.r*0.45 + Math.cos(faceAng+s*1.15)*p.r*0.4;
       const ey = Math.sin(faceAng)*p.r*0.45*0.7 + Math.sin(faceAng+s*1.15)*p.r*0.4*0.7;
@@ -805,7 +815,6 @@
       ctx.arc(ex,ey-p.r*0.12,p.r*0.13,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
     }
 
-    // 네온 집게발 (자동 총구 겸용)
     const swing = p.clawTimer>0 ? Math.sin((1-p.clawTimer/CLAW_DURATION)*Math.PI)*1.1 : 0.2;
     for(const s of [-1,1]){
       ctx.save();
@@ -813,21 +822,13 @@
       ctx.translate(p.r*0.8, s*p.r*0.6);
       ctx.rotate(s*(0.85+swing));
       
-      ctx.beginPath();
-      ctx.fillStyle = '#1A0933';
-      ctx.strokeStyle = '#FF5EC8'; 
-      ctx.lineWidth = 3;
-      ctx.shadowColor = '#FF5EC8';
-      ctx.shadowBlur = p.clawTimer>0 ? 25 : 8;
+      ctx.beginPath(); ctx.fillStyle = '#1A0933'; ctx.strokeStyle = '#FF5EC8'; ctx.lineWidth = 3;
+      ctx.shadowColor = '#FF5EC8'; ctx.shadowBlur = p.clawTimer>0 ? 25 : 8;
       ctx.ellipse(0, 0, p.r*0.65, p.r*0.35, 0, 0, Math.PI*2);
       ctx.fill(); ctx.stroke();
       
-      // 총구 내부 크리스탈
-      ctx.beginPath();
-      ctx.fillStyle = '#5EE7FF';
-      ctx.arc(p.r*0.2, 0, p.r*0.15, 0, Math.PI*2);
-      ctx.fill();
-
+      ctx.beginPath(); ctx.fillStyle = '#5EE7FF';
+      ctx.arc(p.r*0.2, 0, p.r*0.15, 0, Math.PI*2); ctx.fill();
       ctx.restore();
     }
 
@@ -837,18 +838,14 @@
   function drawParticles(){
     for(const pt of particles){
       const a = 1 - pt.life/pt.maxLife;
-      ctx.beginPath();
-      ctx.fillStyle = pt.color;
-      ctx.globalAlpha = Math.max(0,a);
-      ctx.arc(pt.x,pt.y,pt.r,0,Math.PI*2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.fillStyle = pt.color; ctx.globalAlpha = Math.max(0,a);
+      ctx.arc(pt.x,pt.y,pt.r,0,Math.PI*2); ctx.fill(); ctx.globalAlpha = 1;
     }
   }
 
   function render(t){
     drawStars(t);
-    for(const p of planets) drawPlanet(p);
+    drawGrenades();
     drawPlayerBullets();
     for(const en of enemies) drawEnemy(en);
     drawEnemyBullets();
@@ -861,22 +858,23 @@
   const livesEl = document.getElementById('lives');
   const progressBarEl = document.getElementById('progressBar');
   const scoreEl = document.getElementById('score');
+  const grenadeBarEl = document.getElementById('grenadeBar');
 
   function updateHUDStatic(){
-    stageLabelEl.textContent = stageCfg.isBoss ? `BOSS STAGE ${stageNum} / 100` : `STAGE ${stageNum} / 100`;
+    stageLabelEl.textContent = `STAGE ${stageNum} (배율x${stageCfg.multiplier.toFixed(2)})`;
     livesEl.innerHTML = '';
     for(let i=0;i<lives;i++){ const h=document.createElement('div'); h.className='heart'; livesEl.appendChild(h); }
   }
   function updateHUDDynamic(){
     if(livesEl.children.length !== lives){ updateHUDStatic(); }
     scoreEl.textContent = 'SCORE ' + score;
-    if(stageCfg.isBoss){
-      const boss = enemies.find(e=>e.type==='boss');
-      const ratio = boss ? boss.hp/boss.maxHp : 0;
-      progressBarEl.style.width = (ratio*100)+'%';
-    } else {
-      progressBarEl.style.width = Math.min(100,(planetsEaten/stageCfg.planetsNeeded*100))+'%';
-    }
+    
+    const gRatio = Math.min(1.0, player.grenadeTimer / GRENADE_INTERVAL);
+    grenadeBarEl.style.width = (gRatio * 100) + '%';
+
+    const boss = enemies.find(e=>e.type==='boss');
+    const ratio = boss ? boss.hp/boss.maxHp : 0;
+    progressBarEl.style.width = (ratio*100)+'%';
   }
 
   // ---------------- Screens ----------------
@@ -895,8 +893,8 @@
       running = false;
       return;
     }
-    document.getElementById('clearTitle').textContent = stageCfg.isBoss ? '보스 격파!' : `STAGE ${stageNum} CLEAR!`;
-    document.getElementById('clearScore').textContent = `점수: ${score}   (다음: 스테이지 ${stageNum+1})`;
+    document.getElementById('clearTitle').textContent = `STAGE ${stageNum} BOSS CLEAR!`;
+    document.getElementById('clearScore').textContent = `점수: ${score}   (다음: STAGE ${stageNum+1} - 체력 완충!)`;
     screenClear.classList.remove('hidden');
   }
 
@@ -916,27 +914,24 @@
   document.getElementById('startBtn').addEventListener('click', ()=>{
     ensureAudio();
     screenTitle.classList.add('hidden');
-    lives = 5; score = 0;
-    running = true;
+    score = 0; running = true;
     startStage(1);
   });
 
   document.getElementById('nextBtn').addEventListener('click', ()=>{
     screenClear.classList.add('hidden');
-    let n = stageNum+1;
-    if(n%12===0 && lives<MAX_LIVES) lives++; 
-    startStage(n);
+    startStage(stageNum + 1);
   });
 
   document.getElementById('retryBtn').addEventListener('click', ()=>{
     screenGameOver.classList.add('hidden');
-    lives = 5; score = 0; running = true;
+    score = 0; running = true;
     startStage(1);
   });
 
   document.getElementById('winRetryBtn').addEventListener('click', ()=>{
     screenWin.classList.add('hidden');
-    lives = 5; score = 0; running = true;
+    score = 0; running = true;
     startStage(1);
   });
 
