@@ -40,7 +40,7 @@
     flex:1; height:10px; border-radius:6px; background:rgba(255,255,255,0.08);
     border:1px solid rgba(94,231,255,0.35); overflow:hidden; max-width:340px; min-width:80px;
   }
-  #progressBar{ height:100%; width:0%; background:linear-gradient(90deg,#5EE7FF,#FF2D70); transition:width 0.25s ease; }
+  #progressBar{ height:100%; width:100%; background:linear-gradient(90deg,#5EE7FF,#FF2D70); transition:width 0.25s ease; }
   #score{ font-size:13px; color:#FFD25E; text-shadow:0 0 8px rgba(255,210,80,0.7); }
   
   /* 수류탄 쿨타임 게이지 HUD */
@@ -199,6 +199,11 @@
     g.gain.exponentialRampToValueAtTime(0.0001, now+dur);
     o.start(now); o.stop(now+dur+0.02);
   }
+
+  document.getElementById('muteBtn').addEventListener('click', ()=>{
+    muted = !muted;
+    document.getElementById('muteBtn').textContent = muted ? '🔇 음소거' : '🔊 소리';
+  });
 
   // ---------------- Palettes ----------------
   const NORMAL_ENEMY = { asteroid:'#00E5FF', scout:'#FF00A0', hunter:'#FF3300', bullet:'#FFD25E' };
@@ -506,7 +511,6 @@
   }
 
   // ---------------- Update ----------------
-  let lastTime = 0;
   function update(dt){
     if(!running || paused || stageCleared) return;
 
@@ -877,33 +881,12 @@
     progressBarEl.style.width = (ratio*100)+'%';
   }
 
-  // ---------------- Screens ----------------
+  // ---------------- Screens & Transitions ----------------
   const screenTitle = document.getElementById('screenTitle');
   const screenClear = document.getElementById('screenClear');
   const screenGameOver = document.getElementById('screenGameOver');
   const screenWin = document.getElementById('screenWin');
   const screenPause = document.getElementById('screenPause');
-
-  function triggerStageClear(){
-    stageCleared = true;
-    beep('clear');
-    if(stageNum >= 100){
-      document.getElementById('winScore').textContent = `최종 점수: ${score}`;
-      screenWin.classList.remove('hidden');
-      running = false;
-      return;
-    }
-    document.getElementById('clearTitle').textContent = `STAGE ${stageNum} BOSS CLEAR!`;
-    document.getElementById('clearScore').textContent = `점수: ${score}   (다음: STAGE ${stageNum+1} - 체력 완충!)`;
-    screenClear.classList.remove('hidden');
-  }
-
-  function triggerGameOver(){
-    running = false;
-    beep('over');
-    document.getElementById('overStats').textContent = `도달 스테이지: ${stageNum}   최종 점수: ${score}`;
-    screenGameOver.classList.remove('hidden');
-  }
 
   function togglePause(){
     if(!running || stageCleared) return;
@@ -911,10 +894,31 @@
     screenPause.classList.toggle('hidden', !paused);
   }
 
+  function triggerStageClear(){
+    stageCleared = true;
+    beep('clear');
+    if(stageNum >= 100){
+      document.getElementById('winScore').textContent = `최종 점수: ${score}점`;
+      screenWin.classList.remove('hidden');
+    } else {
+      document.getElementById('clearTitle').textContent = `STAGE ${stageNum} CLEAR!`;
+      document.getElementById('clearScore').textContent = `현재 누적 점수: ${score}점`;
+      screenClear.classList.remove('hidden');
+    }
+  }
+
+  function triggerGameOver(){
+    running = false;
+    beep('over');
+    document.getElementById('overStats').textContent = `도달 스테이지: STAGE ${stageNum} | 최종 점수: ${score}점`;
+    screenGameOver.classList.remove('hidden');
+  }
+
+  // Button Listeners
   document.getElementById('startBtn').addEventListener('click', ()=>{
-    ensureAudio();
     screenTitle.classList.add('hidden');
-    score = 0; running = true;
+    score = 0;
+    running = true;
     startStage(1);
   });
 
@@ -925,34 +929,33 @@
 
   document.getElementById('retryBtn').addEventListener('click', ()=>{
     screenGameOver.classList.add('hidden');
-    score = 0; running = true;
+    score = 0;
+    running = true;
     startStage(1);
   });
 
   document.getElementById('winRetryBtn').addEventListener('click', ()=>{
     screenWin.classList.add('hidden');
-    score = 0; running = true;
+    score = 0;
+    running = true;
     startStage(1);
   });
 
   document.getElementById('resumeBtn').addEventListener('click', togglePause);
 
-  document.getElementById('muteBtn').addEventListener('click', ()=>{
-    muted = !muted;
-    document.getElementById('muteBtn').textContent = muted ? '🔇 음소거' : '🔊 소리';
-  });
+  // ---------------- Game Loop ----------------
+  let lastT = performance.now();
+  function gameLoop(now){
+    const dt = Math.min(0.05, (now - lastT)/1000);
+    lastT = now;
 
-  // ---------------- Loop ----------------
-  function loop(t){
-    if(!lastTime) lastTime = t;
-    let dt = (t - lastTime)/1000;
-    lastTime = t;
-    if(dt > 0.05) dt = 0.05;
     update(dt);
-    render(t);
-    requestAnimationFrame(loop);
+    render(now);
+
+    requestAnimationFrame(gameLoop);
   }
-  requestAnimationFrame(loop);
+  requestAnimationFrame(gameLoop);
+
 })();
 </script>
 </body>
