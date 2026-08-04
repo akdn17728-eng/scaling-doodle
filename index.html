@@ -10,6 +10,8 @@
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{ background:var(--void); height:100%; overflow:hidden; }
   body.shake{ animation: shake 0.4s linear; }
+  body.earthquake{ animation: quake 0.08s ease-in-out infinite alternate; }
+
   @keyframes shake{
     0%,100%{ transform:translate(0,0); }
     10%{ transform:translate(-6px,4px); }
@@ -22,6 +24,13 @@
     80%{ transform:translate(4px,-4px); }
     90%{ transform:translate(-2px,2px); }
   }
+
+  @keyframes quake{
+    0%{ transform:translate(-12px, 8px) rotate(-1deg); }
+    50%{ transform:translate(14px, -10px) rotate(1.2deg); }
+    100%{ transform:translate(-8px, -12px) rotate(-0.8deg); }
+  }
+
   #warp{ position:fixed; inset:0; z-index:0; display:block; cursor:crosshair; }
 
   .scene{
@@ -184,14 +193,18 @@
     text-shadow:0 0 8px rgba(94,231,255,0.4);
   }
 
-  .start-btn{
+  /* 버튼 영역 컨테이너 */
+  .btn-container{
     position:fixed; top:86%; left:50%; transform:translate(-50%,-50%);
-    z-index:8;
+    z-index:8; display:flex; gap:16px; align-items:center;
+  }
+
+  .start-btn{
     font-family:'Orbitron', sans-serif;
     font-weight:700;
-    font-size:clamp(0.95rem, 2.6vw, 1.3rem);
+    font-size:clamp(0.85rem, 2.2vw, 1.2rem);
     letter-spacing:0.08em;
-    padding:0.85em 2.4em;
+    padding:0.85em 2vw;
     color:#EAFFFC;
     background:rgba(10,4,24,0.55);
     border:2px solid rgba(94,231,255,0.75);
@@ -204,9 +217,10 @@
       inset 0 0 14px rgba(94,231,255,0.15);
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
     animation: btnpulse 2.4s ease-in-out infinite;
+    white-space: nowrap;
   }
   .start-btn:hover{
-    transform:translate(-50%,-50%) scale(1.06);
+    transform:scale(1.06);
     background:rgba(94,231,255,0.16);
     color:#ffffff;
     box-shadow:
@@ -215,8 +229,25 @@
       inset 0 0 18px rgba(94,231,255,0.25);
   }
   .start-btn:active{
-    transform:translate(-50%,-50%) scale(0.97);
+    transform:scale(0.97);
   }
+
+  /* 지진 모델링 버튼 강조 스타일 */
+  .quake-btn{
+    border-color: rgba(255,140,60,0.85);
+    box-shadow:
+      0 0 18px rgba(255,140,60,0.55),
+      0 0 40px rgba(255,45,45,0.25),
+      inset 0 0 14px rgba(255,140,60,0.15);
+  }
+  .quake-btn:hover{
+    background:rgba(255,140,60,0.2);
+    box-shadow:
+      0 0 26px rgba(255,140,60,0.9),
+      0 0 60px rgba(255,45,45,0.5),
+      inset 0 0 18px rgba(255,140,60,0.3);
+  }
+
   @keyframes btnpulse{
     0%,100%{ box-shadow:0 0 18px rgba(94,231,255,0.55), 0 0 40px rgba(255,45,180,0.25), inset 0 0 14px rgba(94,231,255,0.15); }
     50%{ box-shadow:0 0 26px rgba(94,231,255,0.85), 0 0 55px rgba(255,45,180,0.4), inset 0 0 18px rgba(94,231,255,0.25); }
@@ -226,7 +257,7 @@
     .orbit-1,.orbit-2,.orbit-3,.planet,.ring,.star-sun,.mini-planet{ animation:none; }
     .title-inner, .title-inner::before, .title-inner::after{ animation:none; }
     .eye{ animation:none; }
-    body.shake{ animation:none; }
+    body.shake, body.earthquake{ animation:none; }
     .start-btn{ animation:none; }
   }
 </style>
@@ -249,7 +280,12 @@
 </div>
 
 <div class="title"><span class="title-inner" data-text="광란의 우주">광란의 우주</span></div>
-<button class="start-btn" id="startBtn" type="button">시작하기</button>
+
+<div class="btn-container">
+  <button class="start-btn" id="startBtn" type="button">시작하기</button>
+  <button class="start-btn quake-btn" id="quakeBtn" type="button">지진 모델링</button>
+</div>
+
 <div class="scan"></div>
 <div class="rage"></div>
 
@@ -640,6 +676,41 @@
   document.getElementById('startBtn').addEventListener('click', (e)=>{
     e.stopPropagation();
     window.location.href = 'main.html';
+  });
+
+  // 지진 모델링 실행 로직
+  let isEarthquakeActive = false;
+  document.getElementById('quakeBtn').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(isEarthquakeActive) return;
+    isEarthquakeActive = true;
+
+    document.body.classList.add('earthquake');
+
+    // 충격파 연속 발생 및 파티클 분사
+    let quakeInterval = setInterval(() => {
+      const qx = Math.random() * w;
+      const qy = Math.random() * h;
+      shocks.push({ x: qx, y: qy, life: 0, maxLife: 50, maxR: Math.max(w, h) * 0.6 });
+
+      for(let i=0; i<15; i++){
+        const ang = Math.random() * Math.PI * 2;
+        const spd = Math.random() * 8 + 3;
+        particles.push({
+          x: qx, y: qy,
+          vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd,
+          life: 0, maxLife: 30 + Math.random()*20,
+          color: '255,100,50'
+        });
+      }
+    }, 150);
+
+    // 2.5초 후 진동 멈춤
+    setTimeout(() => {
+      clearInterval(quakeInterval);
+      document.body.classList.remove('earthquake');
+      isEarthquakeActive = false;
+    }, 2500);
   });
 
   function tick(t){
