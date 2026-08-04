@@ -10,7 +10,6 @@
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{ background:var(--void); height:100%; overflow:hidden; }
   body.shake{ animation: shake 0.4s linear; }
-  body.earthquake{ animation: quake 0.08s ease-in-out infinite alternate; }
 
   @keyframes shake{
     0%,100%{ transform:translate(0,0); }
@@ -23,12 +22,6 @@
     70%{ transform:translate(-6px,2px); }
     80%{ transform:translate(4px,-4px); }
     90%{ transform:translate(-2px,2px); }
-  }
-
-  @keyframes quake{
-    0%{ transform:translate(-12px, 8px) rotate(-1deg); }
-    50%{ transform:translate(14px, -10px) rotate(1.2deg); }
-    100%{ transform:translate(-8px, -12px) rotate(-0.8deg); }
   }
 
   #warp{ position:fixed; inset:0; z-index:0; display:block; cursor:crosshair; }
@@ -232,7 +225,7 @@
     transform:scale(0.97);
   }
 
-  /* 지진 모델링 버튼 강조 스타일 */
+  /* 지진 모델링 버튼 디자인 스타일 */
   .quake-btn{
     border-color: rgba(255,140,60,0.85);
     box-shadow:
@@ -257,7 +250,7 @@
     .orbit-1,.orbit-2,.orbit-3,.planet,.ring,.star-sun,.mini-planet{ animation:none; }
     .title-inner, .title-inner::before, .title-inner::after{ animation:none; }
     .eye{ animation:none; }
-    body.shake, body.earthquake{ animation:none; }
+    body.shake{ animation:none; }
     .start-btn{ animation:none; }
   }
 </style>
@@ -673,44 +666,16 @@
   }
   canvas.addEventListener('click', (e)=> nuke(e.clientX, e.clientY));
 
+  // 시작하기 버튼 클릭 이벤트
   document.getElementById('startBtn').addEventListener('click', (e)=>{
     e.stopPropagation();
     window.location.href = 'main.html';
   });
 
-  // 지진 모델링 실행 로직
-  let isEarthquakeActive = false;
+  // 지진 모델링 버튼 클릭 이벤트 (earth.html로 이동)
   document.getElementById('quakeBtn').addEventListener('click', (e)=>{
     e.stopPropagation();
-    if(isEarthquakeActive) return;
-    isEarthquakeActive = true;
-
-    document.body.classList.add('earthquake');
-
-    // 충격파 연속 발생 및 파티클 분사
-    let quakeInterval = setInterval(() => {
-      const qx = Math.random() * w;
-      const qy = Math.random() * h;
-      shocks.push({ x: qx, y: qy, life: 0, maxLife: 50, maxR: Math.max(w, h) * 0.6 });
-
-      for(let i=0; i<15; i++){
-        const ang = Math.random() * Math.PI * 2;
-        const spd = Math.random() * 8 + 3;
-        particles.push({
-          x: qx, y: qy,
-          vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd,
-          life: 0, maxLife: 30 + Math.random()*20,
-          color: '255,100,50'
-        });
-      }
-    }, 150);
-
-    // 2.5초 후 진동 멈춤
-    setTimeout(() => {
-      clearInterval(quakeInterval);
-      document.body.classList.remove('earthquake');
-      isEarthquakeActive = false;
-    }, 2500);
+    window.location.href = 'earth.html';
   });
 
   function tick(t){
