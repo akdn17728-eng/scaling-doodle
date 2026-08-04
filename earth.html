@@ -1,93 +1,255 @@
-import cv2
-import numpy as np
-import base64
-
-# Load the image
-img_path = 'Screenshot 2026-08-04 1.26.45 PM.jpg'
-img = cv2.imread(img_path)
-
-if img is not None:
-    # Convert image to HSV color space
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-
-    # Define lower and upper bounds for red color (lines)
-    # Red hues wrap around in HSV (0-10 and 160-180)
-    lower_red1 = np.array([0, 100, 100])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([160, 100, 100])
-    upper_red2 = np.array([180, 255, 255])
-
-    # Create masks for red color
-    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-    mask = mask1 + mask2
-
-    # Dilate the mask slightly to cover anti-aliased edges of the lines
-    kernel = np.ones((3, 3), np.uint8)
-    mask_dilated = cv2.dilate(mask, kernel, iterations=1)
-
-    # Use inpainting to fill the masked areas with surrounding pixels
-    cleaned_img = cv2.inpaint(img, mask_dilated, 3, cv2.INPAINT_TELEA)
-
-    # Encode the cleaned image to Base64 to embed directly in HTML
-    _, buffer = cv2.imencode('.jpg', cleaned_img)
-    jpg_as_text = base64.b64encode(buffer).decode('utf-8')
-
-    # Generate HTML content
-    html_content = f"""<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cleaned Map Background</title>
-    <style>
-        body, html {{
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-        }}
-        .bg-map {{
-            width: 100%;
-            height: 100vh;
-            background-image: url('data:image/jpeg;base64,{jpg_as_text}');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }}
-        .content-overlay {{
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.85);
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            text-align: center;
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            color: #333;
-        }}
-        h1 {{
-            margin-top: 0;
-        }}
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>USGS Magnitude 5.0+ Earthquakes</title>
+  
+  <!-- Leaflet 지도 라이브러리 CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      background-color: #f4f4f4;
+      overflow: hidden;
+    }
+
+    /* 사이드바 스타일 (지진 목록) */
+    #sidebar {
+      width: 320px;
+      height: 100%;
+      background: #ffffff;
+      border-right: 1px solid #ccc;
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+    }
+
+    .header {
+      padding: 16px;
+      border-bottom: 1px solid #eee;
+      background: #fafafa;
+    }
+    .header h2 {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .header p {
+      font-size: 13px;
+      color: #666;
+    }
+
+    #earthquake-list {
+      flex: 1;
+      overflow-y: auto;
+      list-style: none;
+    }
+
+    .eq-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .eq-item:hover {
+      background: #f0f7ff;
+    }
+
+    .mag-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #e65100;
+      color: white;
+      font-weight: bold;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+
+    .eq-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      overflow: hidden;
+    }
+    .eq-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #222;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .eq-time {
+      font-size: 11px;
+      color: #777;
+    }
+    .eq-depth {
+      font-size: 11px;
+      color: #888;
+    }
+
+    /* 지도 영역 */
+    #map {
+      flex: 1;
+      height: 100%;
+    }
+
+    /* 로딩 표시 */
+    .loading {
+      padding: 20px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
-    <div class="bg-map"></div>
-    <div class="content-overlay">
-        <h1>지도 배경 HTML</h1>
-        <p>요청하신 대로 빨간 선을 지운 이미지를 배경으로 적용했습니다.</p>
+
+  <!-- 왼쪽 사이드바 -->
+  <div id="sidebar">
+    <div class="header">
+      <h2>USGS Earthquakes (M 5.0+)</h2>
+      <p id="count-summary">데이터 불러오는 중...</p>
     </div>
+    <ul id="earthquake-list">
+      <li class="loading">지진 데이터를 불러오고 있습니다...</li>
+    </ul>
+  </div>
+
+  <!-- 오른쪽 지도 -->
+  <div id="map"></div>
+
+  <!-- Leaflet 지도 라이브러리 JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // 1. 지도 초기화 (세계 지도 중심 설정, 판 선 없이 깔끔한 스타일 적용)
+    const map = L.map('map').setView([20, 0], 2);
+
+    // 판 선이 없는 회색조/깔끔한 타일 레이어 (CartoDB Positron)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+    }).addTo(map);
+
+    const listElement = document.getElementById('earthquake-list');
+    const countSummary = document.getElementById('count-summary');
+    const markers = {};
+
+    // 2. USGS API (지난 7일간 4.5+ 지진 데이터 가져와서 5.0 이상만 직접 필터링)
+    const USGS_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson';
+
+    async function fetchEarthquakes() {
+      try {
+        const response = await fetch(USGS_URL);
+        const data = await response.json();
+
+        // 진도 5.0 이상만 필터링
+        const filteredFeatures = data.features.filter(eq => eq.properties.mag >= 5.0);
+
+        // 최신순 정렬
+        filteredFeatures.sort((a, b) => b.properties.time - a.properties.time);
+
+        renderEarthquakes(filteredFeatures);
+      } catch (error) {
+        console.error('지진 데이터 로드 실패:', error);
+        listElement.innerHTML = '<li class="loading">데이터를 불러오는 중 오류가 발생했습니다.</li>';
+        countSummary.textContent = '오류 발생';
+      }
+    }
+
+    function renderEarthquakes(features) {
+      listElement.innerHTML = '';
+      countSummary.textContent = `총 ${features.length}개의 지진 감지됨`;
+
+      if (features.length === 0) {
+        listElement.innerHTML = '<li class="loading">현재 규모 5.0 이상의 지진이 없습니다.</li>';
+        return;
+      }
+
+      features.forEach((eq) => {
+        const id = eq.id;
+        const mag = eq.properties.mag.toFixed(1);
+        const place = eq.properties.place || '위치 정보 없음';
+        const time = new Date(eq.properties.time).toLocaleString('ko-KR');
+        const coords = eq.geometry.coordinates; // [lng, lat, depth]
+        const lat = coords[1];
+        const lng = coords[0];
+        const depth = coords[2];
+
+        // 3. 지도에 원형 마커 표시 (판 경계선 없음)
+        const marker = L.circleMarker([lat, lng], {
+          radius: Math.max(mag * 2, 8), // 진도에 따라 원 크기 변경
+          fillColor: getMagColor(mag),
+          color: '#ffffff',
+          weight: 1.5,
+          opacity: 0.9,
+          fillOpacity: 0.75
+        }).addTo(map);
+
+        // 마커 클릭 시 팝업
+        marker.bindPopup(`
+          <div style="font-size:13px;">
+            <strong style="color:${getMagColor(mag)}; font-size:15px;">규모 ${mag}</strong><br>
+            <b>위치:</b> ${place}<br>
+            <b>시간:</b> ${time}<br>
+            <b>깊이:</b> ${depth} km
+          </div>
+        `);
+
+        markers[id] = { marker, lat, lng };
+
+        // 4. 왼쪽 사이드바 목록 아이템 생성
+        const li = document.createElement('li');
+        li.className = 'eq-item';
+        li.innerHTML = `
+          <div class="mag-badge" style="background:${getMagColor(mag)}">${mag}</div>
+          <div class="eq-info">
+            <div class="eq-title">${place}</div>
+            <div class="eq-time">${time}</div>
+            <div class="eq-depth">깊이 ${depth}km</div>
+          </div>
+        `;
+
+        // 목록 클릭 시 해당 위치로 지도 이동 및 팝업 열기
+        li.addEventListener('click', () => {
+          map.flyTo([lat, lng], 6, { duration: 1.2 });
+          marker.openPopup();
+        });
+
+        listElement.appendChild(li);
+      });
+    }
+
+    // 진도(규모)에 따른 색상 구분 함수
+    function getMagColor(mag) {
+      if (mag >= 7.0) return '#b71c1c'; // 다크 레드
+      if (mag >= 6.0) return '#d32f2f'; // 레드
+      if (mag >= 5.5) return '#f57c00'; // 주황
+      return '#ff9800';                // 연한 주황 (5.0~5.4)
+    }
+
+    // 실행
+    fetchEarthquakes();
+  </script>
 </body>
 </html>
-"""
-    
-    # Save the HTML file
-    file_path = 'cleaned_map_background.html'
-    with open(file_path, 'w', encoding='utf-8') as f:
-        f.write(html_content)
-    
-    print(f"HTML file created successfully.")
-else:
-    print("Failed to load image.")
